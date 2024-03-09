@@ -1,6 +1,5 @@
 import type {Browser} from 'puppeteer';
 import puppeteer from 'puppeteer-extra';
-import fetch from 'isomorphic-unfetch';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import AnonUAPlugin from 'puppeteer-extra-plugin-anonymize-ua';
 import BlockResourcesPlugin from 'puppeteer-extra-plugin-block-resources';

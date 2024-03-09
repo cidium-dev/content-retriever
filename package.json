@@ -2,7 +2,7 @@
   "name": "content-extractor",
   "scripts": {
     "dev": "bun --watch src/index.ts",
-    "build": "bun build src/index.ts",
+    "build": "bun build src/index.ts --outdir ./build --target bun",
     "start": "NODE_ENV=production bun src/index.ts",
     "lint": "gts lint",
     "clean": "gts clean",
@@ -13,7 +13,6 @@
     "@mozilla/readability": "^0.5.0",
     "elysia": "^0.8.17",
     "franc": "^6.2.0",
-    "isomorphic-unfetch": "^4.0.2",
     "jsdom": "^24.0.0",
     "mammoth": "^1.7.0",
     "moment": "^2.30.1",

@@ -1,4 +1,4 @@
-.yarn
 .env
-node_modules
 .vercel
+build
+node_modules
