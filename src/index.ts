@@ -38,6 +38,6 @@ app.post(
   {body: t.Object({url: t.String()})}
 );
 
-app.listen({port}, () => {
+app.listen({port, hostname: '0.0.0.0'}, () => {
   console.log(`Server running on port ${port}`);
 });
