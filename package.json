@@ -30,7 +30,8 @@
     "@types/jsdom": "^21.1.6",
     "@types/pdf-parse": "^1.1.4",
     "gts": "^5.2.0",
-    "typescript": "~5.2.0"
+    "typescript": "~5.2.0",
+    "@types/node": "20.8.2"
   },
   "pkg": {
     "assets": "puppeteer-extra-plugin-stealth/**/*.*"

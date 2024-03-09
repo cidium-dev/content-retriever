@@ -1,11 +1,11 @@
 import mammoth from 'mammoth';
 import pdfParse from 'pdf-parse';
 import moment from 'moment';
-import { JSDOM } from 'jsdom';
-import { franc } from 'franc';
-import { Readability, isProbablyReaderable } from '@mozilla/readability';
+import {JSDOM} from 'jsdom';
+import {franc} from 'franc';
+import {Readability, isProbablyReaderable} from '@mozilla/readability';
 
-import { getPageContent, getPageContentDirect } from './puppeteer';
+import {getPageContent, getPageContentDirect} from './puppeteer';
 
 enum DocumentType {
   JSON = 'JSON',
@@ -18,8 +18,8 @@ enum DocumentType {
 
 const extractTextFromDocx = async (buffer: Buffer) => {
   const [text, html] = await Promise.all([
-    mammoth.extractRawText({ buffer }),
-    mammoth.convertToHtml({ buffer }),
+    mammoth.extractRawText({buffer}),
+    mammoth.convertToHtml({buffer}),
   ]);
 
   return {
@@ -68,7 +68,7 @@ const determineContentType = async (url: string): Promise<DocumentType> => {
     if (urlLower.endsWith(extension)) return docType;
   }
   try {
-    const response = await fetch(url, { method: 'HEAD' });
+    const response = await fetch(url, {method: 'HEAD'});
 
     if (!response.ok) {
       throw new Error(`Server responded with status: ${response.status}`);
@@ -115,12 +115,12 @@ const extractContent = async (url: string) => {
 
   let data:
     | {
-      title?: string;
-      content?: string;
-      textContent: string;
-      lang?: string;
-      publishedAt?: number;
-    }
+        title?: string;
+        content?: string;
+        textContent: string;
+        lang?: string;
+        publishedAt?: number;
+      }
     | undefined;
 
   if (pageType === DocumentType.PDF) {
