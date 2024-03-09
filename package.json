@@ -1,0 +1,35 @@
+{
+  "name": "content-extractor",
+  "packageManager": "yarn@4.1.1",
+  "scripts": {
+    "start": "vercel dev",
+    "deploy": "vercel deploy",
+    "lint": "gts lint",
+    "clean": "gts clean",
+    "fix": "gts fix",
+    "posttest": "yarn lint"
+  },
+  "dependencies": {
+    "@mozilla/readability": "^0.5.0",
+    "@vercel/node": "^3.0.22",
+    "franc": "^6.2.0",
+    "isomorphic-unfetch": "^4.0.2",
+    "jsdom": "^24.0.0",
+    "mammoth": "^1.7.0",
+    "moment": "^2.30.1",
+    "pdf-parse": "^1.1.1",
+    "puppeteer": "^22.4.1",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-anonymize-ua": "^2.4.6",
+    "puppeteer-extra-plugin-block-resources": "^2.4.3",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  },
+  "devDependencies": {
+    "@types/jsdom": "^21.1.6",
+    "@types/node": "20.8.2",
+    "@types/pdf-parse": "^1.1.4",
+    "gts": "^5.2.0",
+    "typescript": "~5.2.0",
+    "vercel": "^33.5.5"
+  }
+}

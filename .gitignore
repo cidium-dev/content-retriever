@@ -1,0 +1,4 @@
+.yarn
+.env
+node_modules
+.vercel
