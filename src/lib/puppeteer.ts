@@ -27,7 +27,7 @@ puppeteer.use(
 // );
 
 const createBrowser = () =>
-  puppeteer.launch({ignoreHTTPSErrors: true, headless: true});
+  puppeteer.launch({ignoreHTTPSErrors: true, args: ['--no-sandbox']});
 
 const getRunningBrowser = (() => {
   let browser: Browser | undefined;

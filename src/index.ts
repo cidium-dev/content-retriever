@@ -4,7 +4,7 @@ import {logger} from '@bogeychan/elysia-logger';
 import extractContent from './lib/extractor';
 
 const app = new Elysia();
-const port = process.env.PORT || 3002;
+const port = process.env.PORT || 3000;
 
 app.use(
   logger({
