@@ -1,12 +1,12 @@
 {
   "name": "content-extractor",
-  "packageManager": "yarn@4.1.1",
   "scripts": {
-    "deploy": "vercel deploy",
+    "dev": "bun --watch src/index.ts",
+    "build": "bun build src/index.ts",
+    "start": "NODE_ENV=production bun src/index.ts",
     "lint": "gts lint",
     "clean": "gts clean",
-    "fix": "gts fix",
-    "posttest": "yarn lint"
+    "fix": "gts fix"
   },
   "dependencies": {
     "@bogeychan/elysia-logger": "^0.0.17",
@@ -34,6 +34,5 @@
   },
   "pkg": {
     "assets": "puppeteer-extra-plugin-stealth/**/*.*"
-  },
-  "module": "index.ts"
+  }
 }
