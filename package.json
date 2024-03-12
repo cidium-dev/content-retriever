@@ -1,5 +1,5 @@
 {
-  "name": "content-extractor",
+  "name": "content-retriever",
   "scripts": {
     "dev": "bun --watch src/index.ts",
     "build": "bun build src/index.ts --outdir ./build --target bun",
@@ -29,8 +29,7 @@
     "@types/jsdom": "^21.1.6",
     "@types/pdf-parse": "^1.1.4",
     "gts": "^5.2.0",
-    "typescript": "~5.2.0",
-    "@types/node": "20.8.2"
+    "typescript": "~5.2.0"
   },
   "pkg": {
     "assets": "puppeteer-extra-plugin-stealth/**/*.*"

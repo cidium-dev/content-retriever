@@ -1,4 +1,4 @@
-import type {Browser} from 'puppeteer';
+import type {Browser, ResourceType} from 'puppeteer';
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import AnonUAPlugin from 'puppeteer-extra-plugin-anonymize-ua';
@@ -12,7 +12,12 @@ puppeteer.use(StealthPlugin());
 puppeteer.use(AnonUAPlugin());
 puppeteer.use(
   BlockResourcesPlugin({
-    blockedTypes: new Set(['image', 'stylesheet', 'font', 'media']),
+    blockedTypes: new Set([
+      'image',
+      'stylesheet',
+      'font',
+      'media',
+    ] as ResourceType[]),
   })
 );
 
