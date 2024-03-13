@@ -1,18 +1,14 @@
 import {Elysia, t} from 'elysia';
-import {logger} from '@bogeychan/elysia-logger';
+import {logger as loggerPlugin} from '@bogeychan/elysia-logger';
 
 import extractContent from './lib/extractor';
+import {logger} from './lib/logger';
 
 const app = new Elysia();
 const port = process.env.PORT || 3000;
 
 app.use(
-  logger({
-    transport: {
-      target: 'pino-pretty',
-      options: {colorize: true},
-    },
-  })
+  loggerPlugin({transport: {target: 'pino-pretty', options: {colorize: true}}})
 );
 
 app.post(
@@ -27,11 +23,12 @@ app.post(
     if (!url) {
       return new Response('No URL provided', {status: 400});
     }
+    logger.info(`Extracting content from ${url}`);
     try {
       const content = await extractContent(url);
       return Response.json(content);
     } catch (error) {
-      console.error(error);
+      logger.error(error);
       return new Response('Error extracting content', {status: 500});
     }
   },

@@ -6,6 +6,7 @@ import {franc} from 'franc';
 import {Readability, isProbablyReaderable} from '@mozilla/readability';
 
 import {getPageContent, getPageContentDirect} from './puppeteer';
+import {logger} from './logger';
 
 enum DocumentType {
   JSON = 'JSON',
@@ -71,7 +72,7 @@ const determineContentType = async (url: string): Promise<DocumentType> => {
     const response = await fetch(url, {method: 'HEAD'});
 
     if (!response.ok) {
-      throw new Error(`Server responded with status: ${response.status}`);
+      throw new Error(`${response.status} ${response.text()}`);
     }
     const contentType = response.headers.get('Content-Type');
 
@@ -82,7 +83,7 @@ const determineContentType = async (url: string): Promise<DocumentType> => {
       throw new Error('Content-Type header is missing');
     }
   } catch (error) {
-    console.error(`Error determining content type: ${error}`);
+    logger.error(`Error determining content type: ${error} ${url}`);
     return DocumentType.UNKNOWN;
   }
 };
