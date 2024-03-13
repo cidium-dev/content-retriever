@@ -26,6 +26,10 @@ app.post(
     logger.info(`Extracting content from ${url}`);
     try {
       const content = await extractContent(url);
+
+      if (!content) {
+        return Response.json({error: 'UNPROCESSABLE'}, {status: 422});
+      }
       return Response.json(content);
     } catch (error) {
       logger.error(error);
