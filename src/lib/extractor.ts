@@ -72,7 +72,7 @@ const determineContentType = async (url: string): Promise<DocumentType> => {
     const response = await fetch(url, {method: 'HEAD'});
 
     if (!response.ok) {
-      throw new Error(`${response.status} ${response.text()}`);
+      throw new Error(`${response.status} ${await response.text()}`);
     }
     const contentType = response.headers.get('Content-Type');
 
