@@ -50,12 +50,14 @@ const getRunningBrowser = (() => {
   };
 })();
 
-const createPage = async (url?: string) => {
+export const createPage = async (url?: string, wait?: boolean) => {
   const browser = await getRunningBrowser();
   const page = await browser.newPage();
 
   try {
-    if (url) await page.goto(url, {waitUntil: 'networkidle2'});
+    if (url) {
+      await page.goto(url, wait ? {waitUntil: 'networkidle2'} : undefined);
+    }
     return page;
   } catch (e) {
     await page.close();

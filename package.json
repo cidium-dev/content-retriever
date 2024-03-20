@@ -11,8 +11,10 @@
   "dependencies": {
     "@bogeychan/elysia-logger": "^0.0.17",
     "@mozilla/readability": "^0.5.0",
+    "axios": "^1.6.8",
     "elysia": "^0.8.17",
     "franc": "^6.2.0",
+    "googleapis": "^134.0.0",
     "jsdom": "^24.0.0",
     "mammoth": "^1.7.0",
     "moment": "^2.30.1",

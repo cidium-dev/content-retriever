@@ -4,9 +4,11 @@ import moment from 'moment';
 import {JSDOM} from 'jsdom';
 import {franc} from 'franc';
 import {Readability, isProbablyReaderable} from '@mozilla/readability';
+import {readFileSync} from 'node:fs';
 
 import {getPageContent, getPageContentDirect} from './puppeteer';
 import {logger} from './logger';
+import {downloadSubtitles, extractVideoId, getVideosMetadata} from './youtube';
 
 enum DocumentType {
   JSON = 'JSON',
@@ -14,6 +16,7 @@ enum DocumentType {
   XLSX = 'XLSX',
   DOCX = 'DOCX',
   PDF = 'PDF',
+  YOUTUBE = 'YOUTUBE',
   UNKNOWN = 'UNKNOWN',
 }
 
@@ -65,6 +68,9 @@ const determineContentType = async (url: string): Promise<DocumentType> => {
   };
   const urlLower = url.toLowerCase();
 
+  if (urlLower.indexOf('youtube.com') !== -1) {
+    return DocumentType.YOUTUBE;
+  }
   for (const [extension, docType] of Object.entries(extensionToEnum)) {
     if (urlLower.endsWith(extension)) return docType;
   }
@@ -111,7 +117,30 @@ const extractWebpageContent = async (url: string) => {
   };
 };
 
+const extractYoutubeVideo = async (url: string) => {
+  const videoId = extractVideoId(url);
+  if (!videoId) return undefined;
+
+  const [[metadata], subtitlesPath] = await Promise.all([
+    getVideosMetadata([videoId]),
+    downloadSubtitles(videoId),
+  ]);
+  const subtitles = readFileSync(subtitlesPath, 'utf-8');
+
+  return {
+    title: metadata.title || undefined,
+    content: subtitles,
+    textContent: subtitles,
+    lang:
+      metadata.defaultAudioLanguage || metadata.defaultLanguage || undefined,
+    publishedAt: metadata.publishedAt
+      ? new Date(metadata.publishedAt).getTime()
+      : undefined,
+  };
+};
+
 const extractContent = async (url: string) => {
+  // url = await resolveRedirects(url);
   const pageType = await determineContentType(url);
 
   let data:
@@ -130,6 +159,8 @@ const extractContent = async (url: string) => {
   } else if (pageType === DocumentType.DOCX) {
     const buffer = Buffer.from(await getPageContentDirect(url));
     data = await extractTextFromDocx(buffer);
+  } else if (pageType === DocumentType.YOUTUBE) {
+    data = await extractYoutubeVideo(url);
   } else {
     data = await extractWebpageContent(url);
   }
