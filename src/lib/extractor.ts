@@ -117,6 +117,24 @@ const extractWebpageContent = async (url: string) => {
   };
 };
 
+const extractTextFromVTT = (vttContent: string): string => {
+  const lines = vttContent.split('\n');
+  const textContent: string[] = [];
+
+  for (const line of lines) {
+    if (
+      line.includes('-->') ||
+      line.startsWith('WEBVTT') ||
+      line.startsWith('NOTE') ||
+      line.trim() === ''
+    ) {
+      continue;
+    }
+    textContent.push(line.trim());
+  }
+  return textContent.join('\n');
+};
+
 const extractYoutubeVideo = async (url: string) => {
   const videoId = extractVideoId(url);
   if (!videoId) return undefined;
@@ -130,7 +148,7 @@ const extractYoutubeVideo = async (url: string) => {
   return {
     title: metadata.title || undefined,
     content: subtitles,
-    textContent: subtitles,
+    textContent: extractTextFromVTT(subtitles),
     lang:
       metadata.defaultAudioLanguage || metadata.defaultLanguage || undefined,
     publishedAt: metadata.publishedAt
