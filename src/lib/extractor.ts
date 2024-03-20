@@ -135,6 +135,31 @@ const extractTextFromVTT = (vttContent: string): string => {
   return textContent.join('\n');
 };
 
+const getDisplayableVttContent = (vttContent: string): string => {
+  const lines = vttContent.trim().split('\n');
+  let output = '';
+
+  for (let line of lines) {
+    line = line.trim();
+
+    if (line.startsWith('WEBVTT')) {
+      output += '## WEBVTT Header\n';
+    } else if (line.includes('-->')) {
+      const [startTime, endTime] = line.split('-->').map(time => time.trim());
+      output += `<div class="timecode">
+        <span class="start-time">${startTime}</span>
+        <span class="arrow">&#8594;</span>
+        <span class="end-time">${endTime}</span>
+      </div>\n`;
+    } else if (line === '') {
+      output += '<br>\n';
+    } else {
+      output += `<p>${line}</p>\n`;
+    }
+  }
+  return output;
+};
+
 const extractYoutubeVideo = async (url: string) => {
   const videoId = extractVideoId(url);
   if (!videoId) return undefined;
@@ -147,7 +172,7 @@ const extractYoutubeVideo = async (url: string) => {
 
   return {
     title: metadata.title || undefined,
-    content: subtitles,
+    content: getDisplayableVttContent(subtitles),
     textContent: extractTextFromVTT(subtitles),
     lang:
       metadata.defaultAudioLanguage || metadata.defaultLanguage || undefined,
