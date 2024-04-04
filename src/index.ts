@@ -3,6 +3,7 @@ import {logger as loggerPlugin} from '@bogeychan/elysia-logger';
 
 import extractContent from './lib/extractor';
 import {logger} from './lib/logger';
+import {getTokenCount} from './lib/tokens';
 
 const app = new Elysia();
 const port = process.env.PORT || 3000;
@@ -10,6 +11,16 @@ const port = process.env.PORT || 3000;
 app.use(
   loggerPlugin({transport: {target: 'pino-pretty', options: {colorize: true}}})
 );
+
+app.get('/api/count', async req => {
+  const {text} = req.query;
+
+  if (!text) {
+    return new Response('No text provided', {status: 400});
+  }
+  const count = getTokenCount(text);
+  return new Response(JSON.stringify({count}), {status: 200});
+});
 
 app.post(
   '/api/extract',
