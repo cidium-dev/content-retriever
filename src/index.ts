@@ -3,7 +3,7 @@ import {logger as loggerPlugin} from '@bogeychan/elysia-logger';
 
 import extractContent from './lib/extractor';
 import {logger} from './lib/logger';
-import {getTokenCount} from './lib/tokens';
+import {ChatModel, getTokenCount} from './lib/tokens';
 
 const app = new Elysia();
 const port = process.env.PORT || 3000;
@@ -12,15 +12,22 @@ app.use(
   loggerPlugin({transport: {target: 'pino-pretty', options: {colorize: true}}})
 );
 
-app.get('/api/count', async req => {
-  const {text} = req.query;
+app.post(
+  '/api/count',
+  async req => {
+    const {text, model} = req.body;
 
-  if (!text) {
-    return new Response('No text provided', {status: 400});
-  }
-  const count = getTokenCount(text);
-  return new Response(JSON.stringify({count}), {status: 200});
-});
+    if (!text || !model) {
+      return new Response('No text provided', {status: 400});
+    }
+    if (!(model in ChatModel)) {
+      return new Response('Invalid model', {status: 400});
+    }
+    const count = getTokenCount(text, model as ChatModel);
+    return new Response(JSON.stringify({count}), {status: 200});
+  },
+  {body: t.Object({text: t.String(), model: t.String()})}
+);
 
 app.post(
   '/api/extract',
