@@ -21,15 +21,19 @@ enum DocumentType {
 }
 
 const extractTextFromDocx = async (buffer: Buffer) => {
-  const [text, html] = await Promise.all([
-    mammoth.extractRawText({buffer}),
-    mammoth.convertToHtml({buffer}),
-  ]);
-
-  return {
-    content: html.value,
-    textContent: text.value,
-  };
+  try {
+    const [text, html] = await Promise.all([
+      mammoth.extractRawText({buffer}),
+      mammoth.convertToHtml({buffer}),
+    ]);
+    return {
+      content: html.value,
+      textContent: text.value,
+    };
+  } catch (error) {
+    logger.error('Error extracting text from DOCX:', error);
+    throw error;
+  }
 };
 
 const parsePDFDate = (dateStr: string) => {

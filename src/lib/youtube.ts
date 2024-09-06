@@ -132,8 +132,12 @@ export const getVideosMetadata = async (videoIds: string[]) => {
     }
     return snippets as VideoMetadata[];
   } catch (error) {
-    console.error('Error fetching YouTube video metadata:', error);
-    throw error;
+    if (error.response) {
+      logger.error('YouTube API error:', error.response.data);
+    } else {
+      logger.error('Error fetching YouTube video metadata:', error);
+    }
+    throw new Error('Failed to fetch video metadata');
   }
 };
 
