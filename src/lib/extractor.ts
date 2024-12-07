@@ -186,16 +186,7 @@ const extractPdf = async (buffer: Buffer): Promise<ExtractedContent> => {
   };
 };
 
-const extractDoc = async (
-  buffer: Buffer,
-  docType: DocumentType,
-): Promise<ExtractedContent> => {
-  if (docType === DocumentType.DOCX) {
-    return extractDocx(buffer);
-  }
-  if (docType === DocumentType.XLSX) {
-    return extractXlsx(buffer);
-  }
+const extractDoc = async (buffer: Buffer): Promise<ExtractedContent> => {
   return {contentTxt: await officeparser.parseOfficeAsync(buffer)};
 };
 
@@ -290,7 +281,7 @@ const extractContent = async (
     pageType === DocumentType.ODS
   ) {
     const buffer = await getPageContentDirect(url);
-    data = await extractDoc(buffer, pageType);
+    data = await extractDoc(buffer);
   } else if (pageType === DocumentType.JSON) {
     const content = (await getPageContentDirect(url)).toString();
     data = {contentTxt: content, contentHtml: content};
