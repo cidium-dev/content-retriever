@@ -9,7 +9,7 @@ const app = new Elysia();
 const port = process.env.PORT || 3000;
 
 app.use(
-  loggerPlugin({transport: {target: 'pino-pretty', options: {colorize: true}}})
+  loggerPlugin({transport: {target: 'pino-pretty', options: {colorize: true}}}),
 );
 
 app.post(
@@ -26,7 +26,7 @@ app.post(
     const count = getTokenCount(text, model as ChatModel);
     return new Response(JSON.stringify({count}), {status: 200});
   },
-  {body: t.Object({text: t.String(), model: t.String()})}
+  {body: t.Object({text: t.String(), model: t.String()})},
 );
 
 app.post(
@@ -54,7 +54,7 @@ app.post(
       return new Response('Error extracting content', {status: 500});
     }
   },
-  {body: t.Object({url: t.String()})}
+  {body: t.Object({url: t.String()})},
 );
 
 app.listen({port, hostname: '0.0.0.0'}, () => {

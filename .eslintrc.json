@@ -1,4 +1,4 @@
 {
   "extends": "./node_modules/gts/",
-  "plugins": ["bun", "prettier"]
+  "plugins": ["prettier"]
 }

@@ -1,73 +1,57 @@
-import type {Browser, ResourceType} from 'puppeteer';
-import puppeteer from 'puppeteer-extra';
-import StealthPlugin from 'puppeteer-extra-plugin-stealth';
-import AnonUAPlugin from 'puppeteer-extra-plugin-anonymize-ua';
-import BlockResourcesPlugin from 'puppeteer-extra-plugin-block-resources';
-// import RecaptchaPlugin from 'puppeteer-extra-plugin-recaptcha';
-
+import {chromium, Browser} from '@playwright/test';
 import mutex from './mutex';
-// import {getProxyUrl} from './http';
 
-puppeteer.use(StealthPlugin());
-puppeteer.use(AnonUAPlugin());
-puppeteer.use(
-  BlockResourcesPlugin({
-    blockedTypes: new Set([
-      'image',
-      'stylesheet',
-      'font',
-      'media',
-    ] as ResourceType[]),
-  })
-);
-
-// puppeteer.use(
-//   RecaptchaPlugin({
-//     provider: {
-//       id: '2captcha',
-//       token: 'XXXXXXX', // REPLACE THIS WITH YOUR OWN 2CAPTCHA API KEY ⚡
-//     },
-//     visualFeedback: true, // colorize reCAPTCHAs (violet = detected, green = solved)
-//   })
-// );
-
-const createBrowser = () =>
-  puppeteer.launch({ignoreHTTPSErrors: true, args: ['--no-sandbox']});
-
-const getRunningBrowser = (() => {
+const getBrowser = (() => {
   let browser: Browser | undefined;
 
   return async () => {
     const release = await mutex.aquire('browser');
-    if (browser) return browser;
-
     try {
-      browser = await createBrowser();
+      if (!browser) {
+        browser = await chromium.launch({args: ['--no-sandbox']});
+      }
+      return browser;
     } finally {
       release();
     }
-    return browser;
   };
 })();
 
-export const createPage = async (url?: string, wait?: boolean) => {
-  const browser = await getRunningBrowser();
-  const page = await browser.newPage();
+export const createPage = async (url?: string, waitForLoad = false) => {
+  const browser = await getBrowser();
+
+  const context = await browser.newContext({
+    bypassCSP: true,
+    javaScriptEnabled: true,
+    ignoreHTTPSErrors: true,
+    userAgent:
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+  });
+  const page = await context.newPage();
+
+  await page.route('**/*', async (route, request) => {
+    const resourceType = request.resourceType();
+    if (['image', 'stylesheet', 'font', 'media'].includes(resourceType)) {
+      await route.abort();
+    } else {
+      await route.continue();
+    }
+  });
+  if (!url) return page;
 
   try {
-    if (url) {
-      await page.goto(url, wait ? {waitUntil: 'networkidle2'} : undefined);
-    }
-    return page;
+    await page.goto(url, {
+      waitUntil: waitForLoad ? 'networkidle' : undefined,
+    });
   } catch (e) {
     await page.close();
     throw e;
   }
+  return page;
 };
 
 export const getPageContent = async (url: string) => {
   const page = await createPage(url);
-
   try {
     return await page.content();
   } finally {
@@ -77,5 +61,5 @@ export const getPageContent = async (url: string) => {
 
 export const getPageContentDirect = async (url: string) => {
   const res = await fetch(url);
-  return await res.arrayBuffer();
+  return Buffer.from(await res.arrayBuffer());
 };

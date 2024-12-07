@@ -47,7 +47,7 @@ export const downloadVideo = async (videoId: string) => {
 const downloadSubtitlesLang = async (
   videoId: string,
   langCodes: string[],
-  auto?: boolean
+  auto?: boolean,
 ) => {
   const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
   const outputPathBase = resolve(basePath, `transcripts/${videoId}`);
@@ -55,7 +55,7 @@ const downloadSubtitlesLang = async (
   const command = `yt-dlp --skip-download --write${
     auto ? '-auto' : ''
   }-sub --sub-langs "${langCodes.join(
-    ','
+    ',',
   )}" --convert-subs vtt --retries 2 -o "${outputPathBase}.%(ext)s" ${videoUrl}`;
 
   const {stderr} = await execAsync(command);
@@ -92,7 +92,7 @@ export const downloadSubtitles = async (videoId: string) => {
       .filter(_ => _);
     const path = sorted[0];
 
-    writeFileSync(outputPath, readFileSync(path));
+    writeFileSync(outputPath, readFileSync(path, 'utf-8'));
     unlinkSync(path);
     return outputPath;
   } catch (e) {
@@ -131,7 +131,7 @@ export const getVideosMetadata = async (videoIds: string[]) => {
       throw new Error('Incomplete video metadata');
     }
     return snippets as VideoMetadata[];
-  } catch (error) {
+  } catch (error: any) {
     if (error.response) {
       logger.error('YouTube API error:', error.response.data);
     } else {

@@ -1,75 +1,67 @@
+import officeparser from 'officeparser';
 import mammoth from 'mammoth';
-import pdfParse from 'pdf-parse';
-import moment from 'moment';
 import {JSDOM} from 'jsdom';
 import {franc} from 'franc';
-import {Readability, isProbablyReaderable} from '@mozilla/readability';
+import * as XLSX from 'xlsx';
+import {Readability} from '@mozilla/readability';
 import {readFileSync} from 'node:fs';
+import {PDFExtract} from 'pdf.js-extract';
 
 import {getPageContent, getPageContentDirect} from './puppeteer';
-import {logger} from './logger';
 import {downloadSubtitles, extractVideoId, getVideosMetadata} from './youtube';
+import {resolveRedirects} from './redirects';
+import {logger} from './logger';
+
+type ExtractedContent = {
+  title?: string;
+  contentHtml?: string;
+  contentTxt: string;
+  lang?: string;
+  publishedAt?: number;
+};
 
 enum DocumentType {
   JSON = 'JSON',
   CSV = 'CSV',
   XLSX = 'XLSX',
   DOCX = 'DOCX',
+  PPTX = 'PPTX',
+  ODT = 'ODT',
+  ODP = 'ODP',
+  ODS = 'ODS',
   PDF = 'PDF',
   YOUTUBE = 'YOUTUBE',
   UNKNOWN = 'UNKNOWN',
 }
 
-const extractTextFromDocx = async (buffer: Buffer) => {
-  try {
-    const [text, html] = await Promise.all([
-      mammoth.extractRawText({buffer}),
-      mammoth.convertToHtml({buffer}),
-    ]);
-    return {
-      content: html.value,
-      textContent: text.value,
-    };
-  } catch (error) {
-    logger.error('Error extracting text from DOCX:', error);
-    throw error;
-  }
+const extensionToEnum: Record<string, DocumentType> = {
+  '.json': DocumentType.JSON,
+  '.csv': DocumentType.CSV,
+  '.xlsx': DocumentType.XLSX,
+  '.docx': DocumentType.DOCX,
+  '.pptx': DocumentType.PPTX,
+  '.odt': DocumentType.ODT,
+  '.odp': DocumentType.ODP,
+  '.ods': DocumentType.ODS,
+  '.pdf': DocumentType.PDF,
 };
 
-const parsePDFDate = (dateStr: string) => {
-  const formattedDateStr = dateStr.replace('D:', '');
-  const format = 'YYYYMMDDHHmmssZZ';
-  return moment(formattedDateStr, format).toDate();
+const mimeToEnum: Record<string, DocumentType> = {
+  'application/json': DocumentType.JSON,
+  'text/csv': DocumentType.CSV,
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
+    DocumentType.XLSX,
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+    DocumentType.DOCX,
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation':
+    DocumentType.PPTX,
+  'application/vnd.oasis.opendocument.text': DocumentType.ODT,
+  'application/vnd.oasis.opendocument.presentation': DocumentType.ODP,
+  'application/vnd.oasis.opendocument.spreadsheet': DocumentType.ODS,
+  'application/pdf': DocumentType.PDF,
 };
 
-const extractTextFromPDF = async (buffer: Buffer) => {
-  const data = await pdfParse(buffer);
-
-  return {
-    title: data.info.Title,
-    textContent: data.text,
-    publishedAt: parsePDFDate(data.info.CreationDate).getTime(),
-  };
-};
-
-const determineContentType = async (url: string): Promise<DocumentType> => {
-  const mimeToEnum: Record<string, DocumentType> = {
-    'application/json': DocumentType.JSON,
-    'text/csv': DocumentType.CSV,
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
-      DocumentType.XLSX,
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
-      DocumentType.DOCX,
-    'application/pdf': DocumentType.PDF,
-  };
-
-  const extensionToEnum: Record<string, DocumentType> = {
-    '.json': DocumentType.JSON,
-    '.csv': DocumentType.CSV,
-    '.xlsx': DocumentType.XLSX,
-    '.docx': DocumentType.DOCX,
-    '.pdf': DocumentType.PDF,
-  };
+const determineContentTypeFromUrl = (url: string): DocumentType => {
   const urlLower = url.toLowerCase();
 
   if (urlLower.indexOf('youtube.com') !== -1) {
@@ -78,6 +70,12 @@ const determineContentType = async (url: string): Promise<DocumentType> => {
   for (const [extension, docType] of Object.entries(extensionToEnum)) {
     if (urlLower.endsWith(extension)) return docType;
   }
+  return DocumentType.UNKNOWN;
+};
+
+const determineContentTypeFromMime = async (
+  url: string,
+): Promise<DocumentType> => {
   try {
     const response = await fetch(url, {method: 'HEAD'});
 
@@ -98,32 +96,112 @@ const determineContentType = async (url: string): Promise<DocumentType> => {
   }
 };
 
-const extractWebpageContent = async (url: string) => {
-  const content = await getPageContent(url);
-  const doc = new JSDOM(content);
+const determineContentType = async (url: string): Promise<DocumentType> => {
+  const urlType = determineContentTypeFromUrl(url);
 
-  if (!isProbablyReaderable(doc.window.document)) {
-    return undefined;
+  if (urlType !== DocumentType.UNKNOWN) {
+    return urlType;
   }
-  const reader = new Readability(doc.window.document);
-  const tmp = reader.parse();
+  return determineContentTypeFromMime(url);
+};
 
-  if (!tmp) return undefined;
+const extractWebpageContent = async (
+  url: string,
+): Promise<ExtractedContent | undefined> => {
+  try {
+    const content = await getPageContent(url);
+    const doc = new JSDOM(content);
 
+    // if (!isProbablyReaderable(doc.window.document)) {
+    //   return undefined;
+    // }
+    const reader = new Readability(doc.window.document);
+    const tmp = reader.parse();
+
+    if (!tmp) return undefined;
+
+    return {
+      title: tmp.title ? String(tmp.title).trim() : undefined,
+      contentHtml: tmp.content ? String(tmp.content).trim() : undefined,
+      contentTxt: tmp.textContent.trim(),
+      lang: tmp.lang ? String(tmp.lang).trim() : undefined,
+      publishedAt: tmp.publishedTime
+        ? new Date(tmp.publishedTime).getTime()
+        : undefined,
+    };
+  } catch (error) {
+    logger.error(`Error extracting webpage content: ${error} ${url}`);
+    throw error;
+  }
+};
+
+const extractDocx = async (buffer: Buffer): Promise<ExtractedContent> => {
+  const [textResult, htmlResult] = await Promise.all([
+    mammoth.extractRawText({buffer}),
+    mammoth.convertToHtml({buffer}),
+  ]);
   return {
-    title: tmp.title,
-    content: tmp.content,
-    textContent: tmp.textContent,
-    lang: tmp.lang,
-    publishedAt: tmp.publishedTime
-      ? new Date(tmp.publishedTime).getTime()
-      : undefined,
+    contentHtml: htmlResult.value,
+    contentTxt: textResult.value,
   };
 };
 
-const extractTextFromVTT = (vttContent: string): string => {
+const extractXlsx = async (buffer: Buffer): Promise<ExtractedContent> => {
+  const workbook = XLSX.read(buffer);
+
+  const sheetsTxt = workbook.SheetNames.map(name => {
+    const sheet = workbook.Sheets[name];
+    return XLSX.utils.sheet_to_txt(sheet);
+  });
+  const sheetsHtml = workbook.SheetNames.map(name => {
+    const sheet = workbook.Sheets[name];
+    return `Sheet: ${name}\n${XLSX.utils.sheet_to_html(sheet)}`;
+  });
+  return {
+    title: workbook.Props?.Title,
+    contentHtml: sheetsHtml.join('\n\n'),
+    contentTxt: sheetsTxt.join('\n\n'),
+    lang: workbook.Props?.Language,
+    publishedAt: workbook.Props?.ModifiedDate?.getTime(),
+  };
+};
+
+const extractPdf = async (buffer: Buffer): Promise<ExtractedContent> => {
+  const pdfExtract = new PDFExtract();
+  const data = await pdfExtract.extractBuffer(buffer);
+
+  const contentTxt = data.pages
+    .map(
+      (page, idx) =>
+        `Page ${idx + 1}:\n${page.content.map(item => item.str).join(' ')}`,
+    )
+    .join('\n\n');
+
+  return {
+    title: undefined, // pdf.js-extract doesn't provide metadata
+    contentTxt: contentTxt,
+    contentHtml: contentTxt,
+    lang: undefined,
+    publishedAt: undefined,
+  };
+};
+
+const extractDoc = async (
+  buffer: Buffer,
+  docType: DocumentType,
+): Promise<ExtractedContent> => {
+  if (docType === DocumentType.DOCX) {
+    return extractDocx(buffer);
+  }
+  if (docType === DocumentType.XLSX) {
+    return extractXlsx(buffer);
+  }
+  return {contentTxt: await officeparser.parseOfficeAsync(buffer)};
+};
+
+const extractVTT = (vttContent: string): string => {
   const lines = vttContent.split('\n');
-  const textContent: string[] = [];
+  const contentTxt: string[] = [];
 
   for (const line of lines) {
     if (
@@ -134,9 +212,9 @@ const extractTextFromVTT = (vttContent: string): string => {
     ) {
       continue;
     }
-    textContent.push(line.trim());
+    contentTxt.push(line.trim());
   }
-  return textContent.join('\n');
+  return contentTxt.join('\n');
 };
 
 const getDisplayableVttContent = (vttContent: string): string => {
@@ -164,7 +242,9 @@ const getDisplayableVttContent = (vttContent: string): string => {
   return output;
 };
 
-const extractYoutubeVideo = async (url: string) => {
+const extractYoutubeVideo = async (
+  url: string,
+): Promise<ExtractedContent | undefined> => {
   const videoId = extractVideoId(url);
   if (!videoId) return undefined;
 
@@ -176,8 +256,8 @@ const extractYoutubeVideo = async (url: string) => {
 
   return {
     title: metadata.title || undefined,
-    content: getDisplayableVttContent(subtitles),
-    textContent: extractTextFromVTT(subtitles),
+    contentHtml: getDisplayableVttContent(subtitles),
+    contentTxt: extractVTT(subtitles),
     lang:
       metadata.defaultAudioLanguage || metadata.defaultLanguage || undefined,
     publishedAt: metadata.publishedAt
@@ -186,26 +266,34 @@ const extractYoutubeVideo = async (url: string) => {
   };
 };
 
-const extractContent = async (url: string) => {
-  // url = await resolveRedirects(url);
+const extractContent = async (
+  url: string,
+): Promise<ExtractedContent | undefined> => {
+  url = await resolveRedirects(url);
   const pageType = await determineContentType(url);
 
-  let data:
-    | {
-        title?: string;
-        content?: string;
-        textContent: string;
-        lang?: string;
-        publishedAt?: number;
-      }
-    | undefined;
+  let data: ExtractedContent | undefined;
 
-  if (pageType === DocumentType.PDF) {
-    const buffer = Buffer.from(await getPageContentDirect(url));
-    data = await extractTextFromPDF(buffer);
-  } else if (pageType === DocumentType.DOCX) {
-    const buffer = Buffer.from(await getPageContentDirect(url));
-    data = await extractTextFromDocx(buffer);
+  if (pageType === DocumentType.DOCX) {
+    const buffer = await getPageContentDirect(url);
+    data = await extractDocx(buffer);
+  } else if (pageType === DocumentType.PDF) {
+    const buffer = await getPageContentDirect(url);
+    data = await extractPdf(buffer);
+  } else if (pageType === DocumentType.XLSX) {
+    const buffer = await getPageContentDirect(url);
+    data = await extractXlsx(buffer);
+  } else if (
+    pageType === DocumentType.PPTX ||
+    pageType === DocumentType.ODT ||
+    pageType === DocumentType.ODP ||
+    pageType === DocumentType.ODS
+  ) {
+    const buffer = await getPageContentDirect(url);
+    data = await extractDoc(buffer, pageType);
+  } else if (pageType === DocumentType.JSON) {
+    const content = (await getPageContentDirect(url)).toString();
+    data = {contentTxt: content, contentHtml: content};
   } else if (pageType === DocumentType.YOUTUBE) {
     data = await extractYoutubeVideo(url);
   } else {
@@ -216,8 +304,8 @@ const extractContent = async (url: string) => {
   if (!data.title) {
     data.title = url.split('/').pop();
   }
-  if (!data.lang && data.textContent) {
-    data.lang = franc(data.textContent!);
+  if (!data.lang && data.contentTxt) {
+    data.lang = franc(data.contentTxt!);
   }
   return data;
 };

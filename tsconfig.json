@@ -1,7 +1,6 @@
 {
   "extends": "./node_modules/gts/tsconfig-google.json",
   "compilerOptions": {
-    "target": "bun",
     "skipLibCheck": true,
     "esModuleInterop": true
   },
