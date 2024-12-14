@@ -40,9 +40,7 @@ export const createPage = async (url?: string, waitForLoad = false) => {
   if (!url) return page;
 
   try {
-    await page.goto(url, {
-      waitUntil: waitForLoad ? 'networkidle' : undefined,
-    });
+    await page.goto(url, {waitUntil: waitForLoad ? 'networkidle' : undefined});
   } catch (e) {
     await page.close();
     throw e;

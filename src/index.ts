@@ -1,62 +1,70 @@
-import {Elysia, t} from 'elysia';
-import {logger as loggerPlugin} from '@bogeychan/elysia-logger';
+import fastify, {FastifyRequest} from 'fastify';
+import cors from '@fastify/cors';
+import {z} from 'zod';
 
-import extractContent from './lib/extractor';
+import {getResource, markAsUnprocessable, upsertResource} from './lib/db';
 import {logger} from './lib/logger';
-import {ChatModel, getTokenCount} from './lib/tokens';
+import extractContent from './lib/extractor';
+import isUrl from 'is-url';
 
-const app = new Elysia();
-const port = process.env.PORT || 3000;
+const getCachedContent = async (url: string) => {
+  const cached = await getResource(url);
+  if (!cached) return null;
+  if (cached.unprocessable) throw new Error('UNPROCESSABLE');
 
-app.use(
-  loggerPlugin({transport: {target: 'pino-pretty', options: {colorize: true}}}),
-);
+  return {
+    title: cached.title,
+    contentHtml: cached.content_html,
+    contentText: cached.content_text,
+    lang: cached.lang,
+    publishedAt: cached.published_at?.getTime(),
+  };
+};
 
-app.post(
-  '/api/count',
-  async req => {
-    const {text, model} = req.body;
+const extractAndSaveContent = async (url: string) => {
+  const content = await extractContent(url);
+  if (!content) {
+    await markAsUnprocessable(url);
+    throw new Error('UNPROCESSABLE');
+  }
+  await upsertResource(url, content);
+  return content;
+};
 
-    if (!text || !model) {
-      return new Response('No text provided', {status: 400});
+const app = fastify({logger: true});
+
+app.register(cors, {origin: true});
+
+const checkApiKey = (req: FastifyRequest) => {
+  const apiKey = req.headers['x-api-key'];
+  return apiKey === process.env.API_KEY;
+};
+
+const extractSchema = z.object({url: z.string().url()});
+
+app.post('/api/extract', async (req, reply) => {
+  if (!checkApiKey(req)) {
+    return reply.code(401).send({error: 'UNAUTHORIZED'});
+  }
+  try {
+    const {url} = extractSchema.parse(req.body);
+
+    if (!isUrl(url)) {
+      return reply.code(400).send({error: 'INVALID_URL'});
     }
-    if (!(model in ChatModel)) {
-      return new Response('Invalid model', {status: 400});
-    }
-    const count = getTokenCount(text, model as ChatModel);
-    return new Response(JSON.stringify({count}), {status: 200});
-  },
-  {body: t.Object({text: t.String(), model: t.String()})},
-);
+    return (await getCachedContent(url)) || (await extractAndSaveContent(url));
+  } catch (error) {
+    logger.error(error);
 
-app.post(
-  '/api/extract',
-  async req => {
-    const apiKey = req.headers['x-api-key'];
-    const {url} = req.body;
-
-    if (apiKey !== process.env.API_KEY) {
-      return new Response('Unauthorized', {status: 401});
+    if ((error as Error).message === 'UNPROCESSABLE') {
+      return reply.code(422).send({error: 'UNPROCESSABLE'});
     }
-    if (!url) {
-      return new Response('No URL provided', {status: 400});
-    }
-    logger.info(`Extracting content from ${url}`);
-    try {
-      const content = await extractContent(url);
-
-      if (!content) {
-        return Response.json({error: 'UNPROCESSABLE'}, {status: 422});
-      }
-      return Response.json(content);
-    } catch (error) {
-      logger.error(error);
-      return new Response('Error extracting content', {status: 500});
-    }
-  },
-  {body: t.Object({url: t.String()})},
-);
-
-app.listen({port, hostname: '0.0.0.0'}, () => {
-  console.log(`Server running on port ${port}`);
+    return reply
+      .code(500)
+      .send(`Error extracting content: ${(error as Error).message}`);
+  }
 });
+
+const port = parseInt(process.env.PORT || '3000');
+
+app.listen({port, host: '0.0.0.0'});

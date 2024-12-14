@@ -1,24 +1,18 @@
 import officeparser from 'officeparser';
 import mammoth from 'mammoth';
+import * as XLSX from 'xlsx';
 import {JSDOM} from 'jsdom';
 import {franc} from 'franc';
-import * as XLSX from 'xlsx';
 import {Readability} from '@mozilla/readability';
 import {readFileSync} from 'node:fs';
 import {PDFExtract} from 'pdf.js-extract';
 
+import type {ResourceData} from './db';
 import {getPageContent, getPageContentDirect} from './puppeteer';
 import {downloadSubtitles, extractVideoId, getVideosMetadata} from './youtube';
 import {resolveRedirects} from './redirects';
+import {cleanWebVtt, getDisplayableVttContent} from './vttUtils';
 import {logger} from './logger';
-
-type ExtractedContent = {
-  title?: string;
-  contentHtml?: string;
-  contentTxt: string;
-  lang?: string;
-  publishedAt?: number;
-};
 
 enum DocumentType {
   JSON = 'JSON',
@@ -107,7 +101,7 @@ const determineContentType = async (url: string): Promise<DocumentType> => {
 
 const extractWebpageContent = async (
   url: string,
-): Promise<ExtractedContent | undefined> => {
+): Promise<ResourceData | undefined> => {
   try {
     const content = await getPageContent(url);
     const doc = new JSDOM(content);
@@ -123,7 +117,7 @@ const extractWebpageContent = async (
     return {
       title: tmp.title ? String(tmp.title).trim() : undefined,
       contentHtml: tmp.content ? String(tmp.content).trim() : undefined,
-      contentTxt: tmp.textContent.trim(),
+      contentText: tmp.textContent.trim(),
       lang: tmp.lang ? String(tmp.lang).trim() : undefined,
       publishedAt: tmp.publishedTime
         ? new Date(tmp.publishedTime).getTime()
@@ -135,18 +129,15 @@ const extractWebpageContent = async (
   }
 };
 
-const extractDocx = async (buffer: Buffer): Promise<ExtractedContent> => {
+const extractDocx = async (buffer: Buffer): Promise<ResourceData> => {
   const [textResult, htmlResult] = await Promise.all([
     mammoth.extractRawText({buffer}),
     mammoth.convertToHtml({buffer}),
   ]);
-  return {
-    contentHtml: htmlResult.value,
-    contentTxt: textResult.value,
-  };
+  return {contentHtml: htmlResult.value, contentText: textResult.value};
 };
 
-const extractXlsx = async (buffer: Buffer): Promise<ExtractedContent> => {
+const extractXlsx = async (buffer: Buffer): Promise<ResourceData> => {
   const workbook = XLSX.read(buffer);
 
   const sheetsTxt = workbook.SheetNames.map(name => {
@@ -160,82 +151,33 @@ const extractXlsx = async (buffer: Buffer): Promise<ExtractedContent> => {
   return {
     title: workbook.Props?.Title,
     contentHtml: sheetsHtml.join('\n\n'),
-    contentTxt: sheetsTxt.join('\n\n'),
+    contentText: sheetsTxt.join('\n\n'),
     lang: workbook.Props?.Language,
     publishedAt: workbook.Props?.ModifiedDate?.getTime(),
   };
 };
 
-const extractPdf = async (buffer: Buffer): Promise<ExtractedContent> => {
+const extractPdf = async (buffer: Buffer): Promise<ResourceData> => {
   const pdfExtract = new PDFExtract();
   const data = await pdfExtract.extractBuffer(buffer);
 
-  const contentTxt = data.pages
+  const contentText = data.pages
     .map(
       (page, idx) =>
         `Page ${idx + 1}:\n${page.content.map(item => item.str).join(' ')}`,
     )
     .join('\n\n');
 
-  return {
-    title: undefined, // pdf.js-extract doesn't provide metadata
-    contentTxt: contentTxt,
-    contentHtml: contentTxt,
-    lang: undefined,
-    publishedAt: undefined,
-  };
+  return {contentText};
 };
 
-const extractDoc = async (buffer: Buffer): Promise<ExtractedContent> => {
-  return {contentTxt: await officeparser.parseOfficeAsync(buffer)};
-};
-
-const extractVTT = (vttContent: string): string => {
-  const lines = vttContent.split('\n');
-  const contentTxt: string[] = [];
-
-  for (const line of lines) {
-    if (
-      line.includes('-->') ||
-      line.startsWith('WEBVTT') ||
-      line.startsWith('NOTE') ||
-      line.trim() === ''
-    ) {
-      continue;
-    }
-    contentTxt.push(line.trim());
-  }
-  return contentTxt.join('\n');
-};
-
-const getDisplayableVttContent = (vttContent: string): string => {
-  const lines = vttContent.trim().split('\n');
-  let output = '';
-
-  for (let line of lines) {
-    line = line.trim();
-
-    if (line.startsWith('WEBVTT')) {
-      output += '## WEBVTT Header\n';
-    } else if (line.includes('-->')) {
-      const [startTime, endTime] = line.split('-->').map(time => time.trim());
-      output += `<div class="timecode">
-        <span class="start-time">${startTime}</span>
-        <span class="arrow">&#8594;</span>
-        <span class="end-time">${endTime}</span>
-      </div>\n`;
-    } else if (line === '') {
-      output += '<br>\n';
-    } else {
-      output += `<p>${line}</p>\n`;
-    }
-  }
-  return output;
+const extractDoc = async (buffer: Buffer): Promise<ResourceData> => {
+  return {contentText: await officeparser.parseOfficeAsync(buffer)};
 };
 
 const extractYoutubeVideo = async (
   url: string,
-): Promise<ExtractedContent | undefined> => {
+): Promise<ResourceData | undefined> => {
   const videoId = extractVideoId(url);
   if (!videoId) return undefined;
 
@@ -248,7 +190,7 @@ const extractYoutubeVideo = async (
   return {
     title: metadata.title || undefined,
     contentHtml: getDisplayableVttContent(subtitles),
-    contentTxt: extractVTT(subtitles),
+    contentText: cleanWebVtt(subtitles),
     lang:
       metadata.defaultAudioLanguage || metadata.defaultLanguage || undefined,
     publishedAt: metadata.publishedAt
@@ -259,11 +201,11 @@ const extractYoutubeVideo = async (
 
 const extractContent = async (
   url: string,
-): Promise<ExtractedContent | undefined> => {
+): Promise<ResourceData | undefined> => {
   url = await resolveRedirects(url);
   const pageType = await determineContentType(url);
 
-  let data: ExtractedContent | undefined;
+  let data: ResourceData | undefined;
 
   if (pageType === DocumentType.DOCX) {
     const buffer = await getPageContentDirect(url);
@@ -284,7 +226,7 @@ const extractContent = async (
     data = await extractDoc(buffer);
   } else if (pageType === DocumentType.JSON) {
     const content = (await getPageContentDirect(url)).toString();
-    data = {contentTxt: content, contentHtml: content};
+    data = {contentText: content, contentHtml: content};
   } else if (pageType === DocumentType.YOUTUBE) {
     data = await extractYoutubeVideo(url);
   } else {
@@ -295,8 +237,8 @@ const extractContent = async (
   if (!data.title) {
     data.title = url.split('/').pop();
   }
-  if (!data.lang && data.contentTxt) {
-    data.lang = franc(data.contentTxt!);
+  if (!data.lang && data.contentText) {
+    data.lang = franc(data.contentText!);
   }
   return data;
 };

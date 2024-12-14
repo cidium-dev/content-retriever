@@ -1,6 +1,5 @@
 import {createPage} from './puppeteer';
 import axios, {AxiosError} from 'axios';
-import isUrl from 'is-url';
 
 const resolveRedirectsWithPuppeteer = async (url: string) => {
   const page = await createPage(url, false);
@@ -15,9 +14,6 @@ const resolveRedirectsWithPuppeteer = async (url: string) => {
 };
 
 export const resolveRedirects = async (url: string): Promise<string> => {
-  if (!isUrl(url)) {
-    throw new Error('Invalid URL');
-  }
   try {
     const res = await axios.head(url, {maxRedirects: 0, timeout: 5000});
     const location = res.headers.location;
