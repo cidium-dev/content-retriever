@@ -52,7 +52,8 @@ app.post('/api/extract', async (req, reply) => {
     if (!isUrl(url)) {
       return reply.code(400).send({error: 'INVALID_URL'});
     }
-    return (await getCachedContent(url)) || (await extractAndSaveContent(url));
+    // return (await getCachedContent(url)) || (await extractAndSaveContent(url));
+    return await extractAndSaveContent(url);
   } catch (error) {
     logger.error(error);
 

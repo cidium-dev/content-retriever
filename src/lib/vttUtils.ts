@@ -1,12 +1,16 @@
 export const cleanWebVtt = (webVTT: string): string => {
   const cleanText = webVTT
-    .replace(/<\d{2}:\d{2}:\d{2}\.\d{3}>/g, '') // Remove timestamps
+    .replace(/WEBVTT[\s\S]*?\n\n/g, '') // Remove header section
+    .replace(
+      /\d{2}:\d{2}:\d{2}\.\d{3}\s*-->\s*\d{2}:\d{2}:\d{2}\.\d{3}.*\n/g,
+      '',
+    ) // Remove timestamp lines
+    .replace(/<\d{2}:\d{2}:\d{2}\.\d{3}>/g, '') // Remove inline timestamps
     .replace(/<\/?c[^>]*>/g, '') // Remove <c> tags
-    .replace(/WEBVTT/g, '') // Remove WEBVTT header
     .split('\n')
     .map(line => line.trim())
     .filter(line => line) // Remove empty lines
-    .join('\n');
+    .join(' '); // Join with spaces instead of newlines
 
   return cleanText;
 };
