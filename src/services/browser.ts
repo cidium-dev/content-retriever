@@ -8,10 +8,7 @@ const getBrowser = (() => {
     const release = await mutex.aquire('browser');
     try {
       if (!browser) {
-        browser = await chromium.launch({
-          args: ['--no-sandbox'],
-          headless: false,
-        });
+        browser = await chromium.launch({args: ['--no-sandbox']});
       }
       return browser;
     } finally {
