@@ -7,7 +7,7 @@ import {franc} from 'franc';
 import {Readability} from '@mozilla/readability';
 import {PDFExtract} from 'pdf.js-extract';
 
-import type {ResourceData} from './db';
+import type {ExtractedContent} from './db';
 
 import {getPageContent, getPageContentDirect} from '../services/browser';
 import {
@@ -105,7 +105,7 @@ const determineContentType = async (url: string): Promise<DocumentType> => {
 
 const extractWebpageContent = async (
   url: string,
-): Promise<ResourceData | undefined> => {
+): Promise<ExtractedContent | undefined> => {
   const content = await getPageContent(url);
   console.log(content);
   const doc = new JSDOM(content);
@@ -120,24 +120,22 @@ const extractWebpageContent = async (
 
   return {
     title: tmp.title ? String(tmp.title).trim() : undefined,
-    contentHtml: tmp.content ? String(tmp.content).trim() : undefined,
-    contentText: tmp.textContent.trim(),
+    content_html: tmp.content ? String(tmp.content).trim() : undefined,
+    content_text: tmp.textContent.trim(),
     lang: tmp.lang ? String(tmp.lang).trim() : undefined,
-    publishedAt: tmp.publishedTime
-      ? new Date(tmp.publishedTime).getTime()
-      : undefined,
+    published_at: tmp.publishedTime ? new Date(tmp.publishedTime) : undefined,
   };
 };
 
-const extractDocx = async (buffer: Buffer): Promise<ResourceData> => {
+const extractDocx = async (buffer: Buffer): Promise<ExtractedContent> => {
   const [textResult, htmlResult] = await Promise.all([
     mammoth.extractRawText({buffer}),
     mammoth.convertToHtml({buffer}),
   ]);
-  return {contentHtml: htmlResult.value, contentText: textResult.value};
+  return {content_html: htmlResult.value, content_text: textResult.value};
 };
 
-const extractXlsx = async (buffer: Buffer): Promise<ResourceData> => {
+const extractXlsx = async (buffer: Buffer): Promise<ExtractedContent> => {
   const workbook = XLSX.read(buffer);
 
   const sheetsTxt = workbook.SheetNames.map(name => {
@@ -150,14 +148,14 @@ const extractXlsx = async (buffer: Buffer): Promise<ResourceData> => {
   });
   return {
     title: workbook.Props?.Title,
-    contentHtml: sheetsHtml.join('\n\n'),
-    contentText: sheetsTxt.join('\n\n'),
+    content_html: sheetsHtml.join('\n\n'),
+    content_text: sheetsTxt.join('\n\n'),
     lang: workbook.Props?.Language,
-    publishedAt: workbook.Props?.ModifiedDate?.getTime(),
+    published_at: workbook.Props?.ModifiedDate,
   };
 };
 
-const extractPdf = async (buffer: Buffer): Promise<ResourceData> => {
+const extractPdf = async (buffer: Buffer): Promise<ExtractedContent> => {
   const pdfExtract = new PDFExtract();
   const data = await pdfExtract.extractBuffer(buffer);
 
@@ -168,16 +166,16 @@ const extractPdf = async (buffer: Buffer): Promise<ResourceData> => {
     )
     .join('\n\n');
 
-  return {contentText};
+  return {content_text: contentText};
 };
 
-const extractDoc = async (buffer: Buffer): Promise<ResourceData> => {
-  return {contentText: await officeparser.parseOfficeAsync(buffer)};
+const extractDoc = async (buffer: Buffer): Promise<ExtractedContent> => {
+  return {content_text: await officeparser.parseOfficeAsync(buffer)};
 };
 
 const extractYoutubeVideo = async (
   url: string,
-): Promise<ResourceData | undefined> => {
+): Promise<ExtractedContent | undefined> => {
   const videoId = extractVideoId(url);
   if (!videoId) return undefined;
 
@@ -189,23 +187,23 @@ const extractYoutubeVideo = async (
 
   return {
     title: metadata.title || undefined,
-    contentHtml: getDisplayableVttContent(subtitles),
-    contentText: cleanWebVtt(subtitles),
+    content_html: getDisplayableVttContent(subtitles),
+    content_text: cleanWebVtt(subtitles),
     lang:
       metadata.defaultAudioLanguage || metadata.defaultLanguage || undefined,
-    publishedAt: metadata.publishedAt
-      ? new Date(metadata.publishedAt).getTime()
+    published_at: metadata.publishedAt
+      ? new Date(metadata.publishedAt)
       : undefined,
   };
 };
 
 const extractContent = async (
   url: string,
-): Promise<ResourceData | undefined> => {
+): Promise<ExtractedContent | undefined> => {
   url = await resolveRedirects(url);
   const pageType = await determineContentType(url);
 
-  let data: ResourceData | undefined;
+  let data: ExtractedContent | undefined;
 
   if (pageType === DocumentType.DOCX) {
     const buffer = await getPageContentDirect(url);
@@ -226,7 +224,7 @@ const extractContent = async (
     data = await extractDoc(buffer);
   } else if (pageType === DocumentType.JSON) {
     const content = (await getPageContentDirect(url)).toString();
-    data = {contentText: content, contentHtml: content};
+    data = {content_text: content};
   } else if (pageType === DocumentType.YOUTUBE) {
     data = await extractYoutubeVideo(url);
   } else {
@@ -237,8 +235,8 @@ const extractContent = async (
   if (!data.title) {
     data.title = url.split('/').pop();
   }
-  if (!data.lang && data.contentText) {
-    data.lang = franc(data.contentText!);
+  if (!data.lang && data.content_text) {
+    data.lang = franc(data.content_text!);
   }
   return data;
 };

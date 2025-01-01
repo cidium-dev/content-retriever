@@ -28,11 +28,7 @@ fastify.post(
       return reply.code(401).send({error: 'UNAUTHORIZED'});
     }
     const url = req.body.url;
-
-    return await extractAndSaveContent(url);
-    // return (
-    //   (await getCachedContent(url)) || (await extractAndSaveContent(url))
-    // );
+    return (await getCachedContent(url)) || (await extractAndSaveContent(url));
   },
 );
 

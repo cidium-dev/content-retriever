@@ -2,31 +2,31 @@ import {PrismaClient} from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-export type ResourceData = {
+export type ExtractedContent = {
   title?: string;
-  contentHtml?: string;
-  contentText: string;
+  content_html?: string;
+  content_text: string;
   lang?: string;
-  publishedAt?: number;
+  published_at?: Date;
 };
 
-export const upsertResource = async (url: string, data: ResourceData) => {
+export const upsertResource = async (url: string, data: ExtractedContent) => {
   return await prisma.resource.upsert({
     where: {url},
     update: {
       title: data.title,
-      content_html: data.contentHtml,
-      content_text: data.contentText,
-      published_at: data.publishedAt ? new Date(data.publishedAt) : undefined,
+      content_html: data.content_html,
+      content_text: data.content_html,
+      published_at: data.published_at,
       lang: data.lang,
       unprocessable: false,
     },
     create: {
       url: url,
       title: data.title,
-      content_html: data.contentHtml,
-      content_text: data.contentText,
-      published_at: data.publishedAt ? new Date(data.publishedAt) : undefined,
+      content_html: data.content_html,
+      content_text: data.content_text,
+      published_at: data.published_at,
       lang: data.lang,
       unprocessable: false,
     },
