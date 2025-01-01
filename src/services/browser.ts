@@ -1,5 +1,5 @@
 import {chromium, Browser} from '@playwright/test';
-import mutex from './mutex';
+import mutex from '../utils/mutex';
 
 const getBrowser = (() => {
   let browser: Browser | undefined;
@@ -8,7 +8,10 @@ const getBrowser = (() => {
     const release = await mutex.aquire('browser');
     try {
       if (!browser) {
-        browser = await chromium.launch({args: ['--no-sandbox']});
+        browser = await chromium.launch({
+          args: ['--no-sandbox'],
+          headless: false,
+        });
       }
       return browser;
     } finally {

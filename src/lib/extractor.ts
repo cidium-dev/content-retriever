@@ -1,18 +1,23 @@
+import {readFileSync} from 'node:fs';
 import officeparser from 'officeparser';
-import mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
+import mammoth from 'mammoth';
 import {JSDOM} from 'jsdom';
 import {franc} from 'franc';
 import {Readability} from '@mozilla/readability';
-import {readFileSync} from 'node:fs';
 import {PDFExtract} from 'pdf.js-extract';
 
 import type {ResourceData} from './db';
-import {getPageContent, getPageContentDirect} from './puppeteer';
-import {downloadSubtitles, extractVideoId, getVideosMetadata} from './youtube';
-import {resolveRedirects} from './redirects';
-import {cleanWebVtt, getDisplayableVttContent} from './vttUtils';
-import {logger} from './logger';
+
+import {getPageContent, getPageContentDirect} from '../services/browser';
+import {
+  downloadSubtitles,
+  extractVideoId,
+  getVideosMetadata,
+} from '../services/youtube';
+
+import {resolveRedirects} from '../utils/redirects';
+import {cleanWebVtt, getDisplayableVttContent} from '../utils/vtt';
 
 enum DocumentType {
   JSON = 'JSON',
@@ -85,7 +90,6 @@ const determineContentTypeFromMime = async (
       throw new Error('Content-Type header is missing');
     }
   } catch (error) {
-    logger.error(`Error determining content type: ${error} ${url}`);
     return DocumentType.UNKNOWN;
   }
 };
@@ -102,31 +106,27 @@ const determineContentType = async (url: string): Promise<DocumentType> => {
 const extractWebpageContent = async (
   url: string,
 ): Promise<ResourceData | undefined> => {
-  try {
-    const content = await getPageContent(url);
-    const doc = new JSDOM(content);
+  const content = await getPageContent(url);
+  console.log(content);
+  const doc = new JSDOM(content);
 
-    // if (!isProbablyReaderable(doc.window.document)) {
-    //   return undefined;
-    // }
-    const reader = new Readability(doc.window.document);
-    const tmp = reader.parse();
+  // if (!isProbablyReaderable(doc.window.document)) {
+  //   return undefined;
+  // }
+  const reader = new Readability(doc.window.document);
+  const tmp = reader.parse();
 
-    if (!tmp) return undefined;
+  if (!tmp) return undefined;
 
-    return {
-      title: tmp.title ? String(tmp.title).trim() : undefined,
-      contentHtml: tmp.content ? String(tmp.content).trim() : undefined,
-      contentText: tmp.textContent.trim(),
-      lang: tmp.lang ? String(tmp.lang).trim() : undefined,
-      publishedAt: tmp.publishedTime
-        ? new Date(tmp.publishedTime).getTime()
-        : undefined,
-    };
-  } catch (error) {
-    logger.error(`Error extracting webpage content: ${error} ${url}`);
-    throw error;
-  }
+  return {
+    title: tmp.title ? String(tmp.title).trim() : undefined,
+    contentHtml: tmp.content ? String(tmp.content).trim() : undefined,
+    contentText: tmp.textContent.trim(),
+    lang: tmp.lang ? String(tmp.lang).trim() : undefined,
+    publishedAt: tmp.publishedTime
+      ? new Date(tmp.publishedTime).getTime()
+      : undefined,
+  };
 };
 
 const extractDocx = async (buffer: Buffer): Promise<ResourceData> => {

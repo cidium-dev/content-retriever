@@ -1,10 +1,10 @@
-import {createPage} from './puppeteer';
+import {createPage} from '../services/browser';
 import axios, {AxiosError} from 'axios';
 
 const resolveRedirectsWithPuppeteer = async (url: string) => {
   const page = await createPage(url, false);
   try {
-    await page.waitForNavigation({waitUntil: 'load', timeout: 5000});
+    await page.waitForNavigation({waitUntil: 'load', timeout: 10000});
     return page.url();
   } catch (e) {
     return url;
@@ -15,7 +15,7 @@ const resolveRedirectsWithPuppeteer = async (url: string) => {
 
 export const resolveRedirects = async (url: string): Promise<string> => {
   try {
-    const res = await axios.head(url, {maxRedirects: 0, timeout: 5000});
+    const res = await axios.head(url, {maxRedirects: 0, timeout: 10000});
     const location = res.headers.location;
 
     if (!location) {

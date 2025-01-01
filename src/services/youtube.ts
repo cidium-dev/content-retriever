@@ -3,7 +3,6 @@ import {google, youtube_v3} from 'googleapis';
 import {exec} from 'child_process';
 import {promisify} from 'util';
 import {resolve} from 'path';
-import {logger} from './logger';
 
 const youtubeApiKey = process.env.YOUTUBE_API_KEY;
 const basePath = process.env.TRANSCRIPTS_DUMP_PATH || '';
@@ -98,47 +97,31 @@ export const downloadSubtitles = async (videoId: string) => {
   } catch (e) {
     /* empty */
   }
-  try {
-    const transcripts = await downloadSubtitlesLang(videoId, ['en'], true);
-    const transcript = readFileSync(transcripts.en, 'utf8');
+  const transcripts = await downloadSubtitlesLang(videoId, ['en'], true);
+  const transcript = readFileSync(transcripts.en, 'utf8');
 
-    writeFileSync(outputPath, transcript);
-    unlinkSync(transcripts.en);
-    return outputPath;
-  } catch (e) {
-    logger.error(e);
-    throw new Error(`No English subtitles found for ${videoId}`);
-  }
+  writeFileSync(outputPath, transcript);
+  unlinkSync(transcripts.en);
+  return outputPath;
 };
 
 export type VideoMetadata = youtube_v3.Schema$VideoSnippet;
 
 export const getVideosMetadata = async (videoIds: string[]) => {
-  try {
-    const response = await api.videos.list({
-      part: ['snippet'],
-      id: videoIds,
-    });
+  const response = await api.videos.list({
+    part: ['snippet'],
+    id: videoIds,
+  });
 
-    if (!response.data.items || response.data.items.length === 0) {
-      throw new Error('No video found with the provided ID');
-    }
-    const snippets = response.data.items
-      .map(item => item.snippet)
-      .filter(_ => _);
-
-    if (snippets.length !== videoIds.length) {
-      throw new Error('Incomplete video metadata');
-    }
-    return snippets as VideoMetadata[];
-  } catch (error: any) {
-    if (error.response) {
-      logger.error('YouTube API error:', error.response.data);
-    } else {
-      logger.error('Error fetching YouTube video metadata:', error);
-    }
-    throw new Error('Failed to fetch video metadata');
+  if (!response.data.items || response.data.items.length === 0) {
+    throw new Error('No video found with the provided ID');
   }
+  const snippets = response.data.items.map(item => item.snippet).filter(_ => _);
+
+  if (snippets.length !== videoIds.length) {
+    throw new Error('Incomplete video metadata');
+  }
+  return snippets as VideoMetadata[];
 };
 
 export const extractVideoId = (url: string): string => {

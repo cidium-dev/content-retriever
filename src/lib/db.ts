@@ -19,6 +19,7 @@ export const upsertResource = async (url: string, data: ResourceData) => {
       content_text: data.contentText,
       published_at: data.publishedAt ? new Date(data.publishedAt) : undefined,
       lang: data.lang,
+      unprocessable: false,
     },
     create: {
       url: url,
@@ -27,6 +28,7 @@ export const upsertResource = async (url: string, data: ResourceData) => {
       content_text: data.contentText,
       published_at: data.publishedAt ? new Date(data.publishedAt) : undefined,
       lang: data.lang,
+      unprocessable: false,
     },
   });
 };

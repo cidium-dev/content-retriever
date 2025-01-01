@@ -1,70 +1,51 @@
-import fastify, {FastifyRequest} from 'fastify';
+import Fastify, {type FastifyRequest} from 'fastify';
 import cors from '@fastify/cors';
 import {z} from 'zod';
+import {serializerCompiler, validatorCompiler} from 'fastify-type-provider-zod';
 
-import {getResource, markAsUnprocessable, upsertResource} from './lib/db';
-import {logger} from './lib/logger';
-import extractContent from './lib/extractor';
-import isUrl from 'is-url';
+import {extractAndSaveContent, getCachedContent} from './lib';
 
-const getCachedContent = async (url: string) => {
-  const cached = await getResource(url);
-  if (!cached) return null;
-  if (cached.unprocessable) throw new Error('UNPROCESSABLE');
+const fastify = Fastify({logger: true});
 
-  return {
-    title: cached.title,
-    contentHtml: cached.content_html,
-    contentText: cached.content_text,
-    lang: cached.lang,
-    publishedAt: cached.published_at?.getTime(),
-  };
-};
+void fastify.setValidatorCompiler(validatorCompiler);
+void fastify.setSerializerCompiler(serializerCompiler);
 
-const extractAndSaveContent = async (url: string) => {
-  const content = await extractContent(url);
-  if (!content) {
-    await markAsUnprocessable(url);
-    throw new Error('UNPROCESSABLE');
-  }
-  await upsertResource(url, content);
-  return content;
-};
-
-const app = fastify({logger: true});
-
-app.register(cors, {origin: true});
+void fastify.register(cors, {origin: true});
 
 const checkApiKey = (req: FastifyRequest) => {
   const apiKey = req.headers['x-api-key'];
   return apiKey === process.env.API_KEY;
 };
 
-const extractSchema = z.object({url: z.string().url()});
+const ZExtractBody = z.object({url: z.string().url()});
+type ExtractBody = z.infer<typeof ZExtractBody>;
 
-app.post('/api/extract', async (req, reply) => {
-  if (!checkApiKey(req)) {
-    return reply.code(401).send({error: 'UNAUTHORIZED'});
-  }
-  try {
-    const {url} = extractSchema.parse(req.body);
-
-    if (!isUrl(url)) {
-      return reply.code(400).send({error: 'INVALID_URL'});
+fastify.post(
+  '/api/extract',
+  {schema: {body: ZExtractBody}},
+  async (req: FastifyRequest<{Body: ExtractBody}>, reply) => {
+    if (!checkApiKey(req)) {
+      return reply.code(401).send({error: 'UNAUTHORIZED'});
     }
-    return (await getCachedContent(url)) || (await extractAndSaveContent(url));
-  } catch (error) {
-    logger.error(error);
+    const url = req.body.url;
 
-    if ((error as Error).message === 'UNPROCESSABLE') {
-      return reply.code(422).send({error: 'UNPROCESSABLE'});
-    }
-    return reply
-      .code(500)
-      .send(`Error extracting content: ${(error as Error).message}`);
-  }
+    return await extractAndSaveContent(url);
+    // return (
+    //   (await getCachedContent(url)) || (await extractAndSaveContent(url))
+    // );
+  },
+);
+
+fastify.setErrorHandler(async (error, request, reply) => {
+  fastify.log.error(
+    {err: error, stack: error.stack, message: error.message},
+    'Request failed',
+  );
+  await reply.status(500).send({error: 'Internal Server Error'});
 });
 
-const port = parseInt(process.env.PORT || '3000');
+const port = parseInt(process.env.PORT || '3002');
 
-app.listen({port, host: '0.0.0.0'});
+fastify.listen({port, host: '0.0.0.0'}, () => {
+  console.log(`Server is running on port ${port}`);
+});
