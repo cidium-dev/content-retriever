@@ -8,10 +8,10 @@ export const getCachedContent = async (url: string) => {
 
   return {
     title: cached.title,
-    contentHtml: cached.content_html,
-    contentText: cached.content_text,
+    content_html: cached.content_html,
+    content_text: cached.content_text,
     lang: cached.lang,
-    publishedAt: cached.published_at?.getTime(),
+    published_at: cached.published_at?.getTime(),
   };
 };
 
