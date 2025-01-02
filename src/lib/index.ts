@@ -7,6 +7,7 @@ export const getCachedContent = async (url: string) => {
   if (cached.unprocessable) throw new Error('UNPROCESSABLE');
 
   return {
+    type: cached.type,
     title: cached.title,
     content_html: cached.content_html,
     content_text: cached.content_text,
@@ -18,7 +19,7 @@ export const getCachedContent = async (url: string) => {
 export const extractAndSaveContent = async (url: string) => {
   const content = await extractContent(url);
   if (!content) {
-    // await markAsUnprocessable(url);
+    await markAsUnprocessable(url);
     throw new Error('UNPROCESSABLE');
   }
   await upsertResource(url, content);

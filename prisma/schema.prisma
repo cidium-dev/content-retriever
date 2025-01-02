@@ -7,14 +7,30 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum ResourceType {
+  WEB
+  JSON
+  CSV
+  XLSX
+  DOCX
+  PPTX
+  ODT
+  ODP
+  ODS
+  PDF
+  YOUTUBE
+  UNKNOWN
+}
+
 model Resource {
-  url           String    @id @map("_id")
-  unprocessable Boolean   @default(false)
+  url           String       @id @map("_id")
+  unprocessable Boolean      @default(false)
   title         String?
   content_html  String?
   content_text  String?
   published_at  DateTime?
   lang          String?
-  created_at    DateTime  @default(now())
-  updated_at    DateTime  @updatedAt
+  type          ResourceType
+  created_at    DateTime     @default(now())
+  updated_at    DateTime     @updatedAt
 }

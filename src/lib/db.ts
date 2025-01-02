@@ -1,8 +1,9 @@
-import {PrismaClient} from '@prisma/client';
+import {PrismaClient, ResourceType} from '@prisma/client';
 
 const prisma = new PrismaClient();
 
 export type ExtractedContent = {
+  type: ResourceType;
   title?: string;
   content_html?: string;
   content_text: string;
@@ -23,6 +24,7 @@ export const upsertResource = async (url: string, data: ExtractedContent) => {
     },
     create: {
       url: url,
+      type: data.type,
       title: data.title,
       content_html: data.content_html,
       content_text: data.content_text,
@@ -41,6 +43,6 @@ export const markAsUnprocessable = async (url: string) => {
   return await prisma.resource.upsert({
     where: {url},
     update: {unprocessable: true},
-    create: {url, unprocessable: true},
+    create: {url, unprocessable: true, type: ResourceType.UNKNOWN},
   });
 };

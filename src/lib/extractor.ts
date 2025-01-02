@@ -18,63 +18,50 @@ import {
 
 import {resolveRedirects} from '../utils/redirects';
 import {cleanWebVtt, getDisplayableVttContent} from '../utils/vtt';
+import {ResourceType} from '@prisma/client';
 
-enum DocumentType {
-  JSON = 'JSON',
-  CSV = 'CSV',
-  XLSX = 'XLSX',
-  DOCX = 'DOCX',
-  PPTX = 'PPTX',
-  ODT = 'ODT',
-  ODP = 'ODP',
-  ODS = 'ODS',
-  PDF = 'PDF',
-  YOUTUBE = 'YOUTUBE',
-  UNKNOWN = 'UNKNOWN',
-}
-
-const extensionToEnum: Record<string, DocumentType> = {
-  '.json': DocumentType.JSON,
-  '.csv': DocumentType.CSV,
-  '.xlsx': DocumentType.XLSX,
-  '.docx': DocumentType.DOCX,
-  '.pptx': DocumentType.PPTX,
-  '.odt': DocumentType.ODT,
-  '.odp': DocumentType.ODP,
-  '.ods': DocumentType.ODS,
-  '.pdf': DocumentType.PDF,
+const extensionToEnum: Record<string, ResourceType> = {
+  '.json': ResourceType.JSON,
+  '.csv': ResourceType.CSV,
+  '.xlsx': ResourceType.XLSX,
+  '.docx': ResourceType.DOCX,
+  '.pptx': ResourceType.PPTX,
+  '.odt': ResourceType.ODT,
+  '.odp': ResourceType.ODP,
+  '.ods': ResourceType.ODS,
+  '.pdf': ResourceType.PDF,
 };
 
-const mimeToEnum: Record<string, DocumentType> = {
-  'application/json': DocumentType.JSON,
-  'text/csv': DocumentType.CSV,
+const mimeToEnum: Record<string, ResourceType> = {
+  'application/json': ResourceType.JSON,
+  'text/csv': ResourceType.CSV,
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
-    DocumentType.XLSX,
+    ResourceType.XLSX,
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
-    DocumentType.DOCX,
+    ResourceType.DOCX,
   'application/vnd.openxmlformats-officedocument.presentationml.presentation':
-    DocumentType.PPTX,
-  'application/vnd.oasis.opendocument.text': DocumentType.ODT,
-  'application/vnd.oasis.opendocument.presentation': DocumentType.ODP,
-  'application/vnd.oasis.opendocument.spreadsheet': DocumentType.ODS,
-  'application/pdf': DocumentType.PDF,
+    ResourceType.PPTX,
+  'application/vnd.oasis.opendocument.text': ResourceType.ODT,
+  'application/vnd.oasis.opendocument.presentation': ResourceType.ODP,
+  'application/vnd.oasis.opendocument.spreadsheet': ResourceType.ODS,
+  'application/pdf': ResourceType.PDF,
 };
 
-const determineContentTypeFromUrl = (url: string): DocumentType => {
+const determineContentTypeFromUrl = (url: string): ResourceType => {
   const urlLower = url.toLowerCase();
 
   if (urlLower.indexOf('youtube.com') !== -1) {
-    return DocumentType.YOUTUBE;
+    return ResourceType.YOUTUBE;
   }
   for (const [extension, docType] of Object.entries(extensionToEnum)) {
     if (urlLower.endsWith(extension)) return docType;
   }
-  return DocumentType.UNKNOWN;
+  return ResourceType.UNKNOWN;
 };
 
 const determineContentTypeFromMime = async (
   url: string,
-): Promise<DocumentType> => {
+): Promise<ResourceType> => {
   try {
     const response = await fetch(url, {method: 'HEAD'});
 
@@ -85,19 +72,19 @@ const determineContentTypeFromMime = async (
 
     if (contentType) {
       const mimeType = contentType.split(';')[0];
-      return (mimeType && mimeToEnum[mimeType]) || DocumentType.UNKNOWN;
+      return (mimeType && mimeToEnum[mimeType]) || ResourceType.UNKNOWN;
     } else {
       throw new Error('Content-Type header is missing');
     }
   } catch (error) {
-    return DocumentType.UNKNOWN;
+    return ResourceType.UNKNOWN;
   }
 };
 
-const determineContentType = async (url: string): Promise<DocumentType> => {
+const determineContentType = async (url: string): Promise<ResourceType> => {
   const urlType = determineContentTypeFromUrl(url);
 
-  if (urlType !== DocumentType.UNKNOWN) {
+  if (urlType !== ResourceType.UNKNOWN) {
     return urlType;
   }
   return determineContentTypeFromMime(url);
@@ -119,6 +106,7 @@ const extractWebpageContent = async (
   if (!tmp) return undefined;
 
   return {
+    type: ResourceType.WEB,
     title: tmp.title ? String(tmp.title).trim() : undefined,
     content_html: tmp.content ? String(tmp.content).trim() : undefined,
     content_text: tmp.textContent.trim(),
@@ -132,7 +120,11 @@ const extractDocx = async (buffer: Buffer): Promise<ExtractedContent> => {
     mammoth.extractRawText({buffer}),
     mammoth.convertToHtml({buffer}),
   ]);
-  return {content_html: htmlResult.value, content_text: textResult.value};
+  return {
+    type: ResourceType.DOCX,
+    content_html: htmlResult.value,
+    content_text: textResult.value,
+  };
 };
 
 const extractXlsx = async (buffer: Buffer): Promise<ExtractedContent> => {
@@ -147,6 +139,7 @@ const extractXlsx = async (buffer: Buffer): Promise<ExtractedContent> => {
     return `Sheet: ${name}\n${XLSX.utils.sheet_to_html(sheet)}`;
   });
   return {
+    type: ResourceType.XLSX,
     title: workbook.Props?.Title,
     content_html: sheetsHtml.join('\n\n'),
     content_text: sheetsTxt.join('\n\n'),
@@ -166,11 +159,14 @@ const extractPdf = async (buffer: Buffer): Promise<ExtractedContent> => {
     )
     .join('\n\n');
 
-  return {content_text: contentText};
+  return {type: ResourceType.PDF, content_text: contentText};
 };
 
 const extractDoc = async (buffer: Buffer): Promise<ExtractedContent> => {
-  return {content_text: await officeparser.parseOfficeAsync(buffer)};
+  return {
+    type: ResourceType.UNKNOWN,
+    content_text: await officeparser.parseOfficeAsync(buffer),
+  };
 };
 
 const extractYoutubeVideo = async (
@@ -186,6 +182,7 @@ const extractYoutubeVideo = async (
   const subtitles = readFileSync(subtitlesPath, 'utf-8');
 
   return {
+    type: ResourceType.YOUTUBE,
     title: metadata.title || undefined,
     content_html: getDisplayableVttContent(subtitles),
     content_text: cleanWebVtt(subtitles),
@@ -205,27 +202,27 @@ const extractContent = async (
 
   let data: ExtractedContent | undefined;
 
-  if (pageType === DocumentType.DOCX) {
+  if (pageType === ResourceType.DOCX) {
     const buffer = await getPageContentDirect(url);
     data = await extractDocx(buffer);
-  } else if (pageType === DocumentType.PDF) {
+  } else if (pageType === ResourceType.PDF) {
     const buffer = await getPageContentDirect(url);
     data = await extractPdf(buffer);
-  } else if (pageType === DocumentType.XLSX) {
+  } else if (pageType === ResourceType.XLSX) {
     const buffer = await getPageContentDirect(url);
     data = await extractXlsx(buffer);
   } else if (
-    pageType === DocumentType.PPTX ||
-    pageType === DocumentType.ODT ||
-    pageType === DocumentType.ODP ||
-    pageType === DocumentType.ODS
+    pageType === ResourceType.PPTX ||
+    pageType === ResourceType.ODT ||
+    pageType === ResourceType.ODP ||
+    pageType === ResourceType.ODS
   ) {
     const buffer = await getPageContentDirect(url);
     data = await extractDoc(buffer);
-  } else if (pageType === DocumentType.JSON) {
+  } else if (pageType === ResourceType.JSON) {
     const content = (await getPageContentDirect(url)).toString();
-    data = {content_text: content};
-  } else if (pageType === DocumentType.YOUTUBE) {
+    data = {type: ResourceType.JSON, content_text: content};
+  } else if (pageType === ResourceType.YOUTUBE) {
     data = await extractYoutubeVideo(url);
   } else {
     data = await extractWebpageContent(url);

@@ -7,7 +7,8 @@
     "lint": "gts lint",
     "clean": "gts clean",
     "fix": "gts fix",
-    "posttest": "npm run lint"
+    "posttest": "npm run lint",
+    "codegen": "prisma generate"
   },
   "dependencies": {
     "@anthropic-ai/tokenizer": "^0.0.4",
