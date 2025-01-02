@@ -1,4 +1,4 @@
-import {chromium, Browser} from '@playwright/test';
+import {chromium, type Browser} from '@playwright/test';
 import mutex from '../utils/mutex';
 
 const getBrowser = (() => {

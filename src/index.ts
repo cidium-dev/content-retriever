@@ -17,13 +17,13 @@ const checkApiKey = (req: FastifyRequest) => {
   return apiKey === process.env.API_KEY;
 };
 
-const ZExtractBody = z.object({url: z.string().url()});
-type ExtractBody = z.infer<typeof ZExtractBody>;
+const ZExtractRquestBody = z.object({url: z.string().url()});
+export type ExtractRequestBody = z.infer<typeof ZExtractRquestBody>;
 
 fastify.post(
   '/api/extract',
-  {schema: {body: ZExtractBody}},
-  async (req: FastifyRequest<{Body: ExtractBody}>, reply) => {
+  {schema: {body: ZExtractRquestBody}},
+  async (req: FastifyRequest<{Body: ExtractRequestBody}>, reply) => {
     if (!checkApiKey(req)) {
       return reply.code(401).send({error: 'UNAUTHORIZED'});
     }

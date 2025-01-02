@@ -1,14 +1,25 @@
 {
   "name": "content-retriever",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./build/package.d.ts",
+      "require": "./build/package.cjs",
+      "import": "./build/package.js"
+    }
+  },
+  "files": [
+    "build/*"
+  ],
   "scripts": {
     "dev": "bun --watch src/index.ts",
-    "build": "bun build src/index.ts --outdir ./build --target bun",
     "start": "NODE_ENV=production bun src/index.ts",
     "lint": "gts lint",
     "clean": "gts clean",
     "fix": "gts fix",
     "posttest": "npm run lint",
-    "codegen": "prisma generate"
+    "codegen": "prisma generate",
+    "build": "tsup src/package.ts --format esm,cjs --treeshake smallest --dts --minify -d build"
   },
   "dependencies": {
     "@anthropic-ai/tokenizer": "^0.0.4",
@@ -36,9 +47,10 @@
     "@types/bun": "^1.1.14",
     "@types/jsdom": "^21.1.7",
     "@types/node": "^22.10.3",
+    "gts": "^6.0.2",
     "prisma": "^6.1.0",
-    "typescript": "~5.7.2",
-    "gts": "^6.0.2"
+    "tsup": "^8.3.5",
+    "typescript": "~5.7.2"
   },
   "pkg": {
     "assets": "puppeteer-extra-plugin-stealth/**/*.*"
