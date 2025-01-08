@@ -1,21 +1,63 @@
-export const cleanWebVtt = (webVTT: string): string => {
-  const cleanText = webVTT
-    .replace(/WEBVTT[\s\S]*?\n\n/g, '') // Remove header section
-    .replace(
-      /\d{2}:\d{2}:\d{2}\.\d{3}\s*-->\s*\d{2}:\d{2}:\d{2}\.\d{3}.*\n/g,
-      '',
-    ) // Remove timestamp lines
-    .replace(/<\d{2}:\d{2}:\d{2}\.\d{3}>/g, '') // Remove inline timestamps
-    .replace(/<\/?c[^>]*>/g, '') // Remove <c> tags
-    .split('\n')
-    .map(line => line.trim())
-    .filter(line => line) // Remove empty lines
-    .join(' '); // Join with spaces instead of newlines
+// const getWordCount = (text: string) => text.split(/\s+/).length;
 
-  return cleanText;
+// const findOverlap = (str1: string, str2: string): number => {
+//   for (let i = 0; i < str1.length; i++) {
+//     const phrase = str1.slice(i);
+//     if (str2.startsWith(phrase)) return i;
+//   }
+//   return -1;
+// };
+
+type VttBlock = {header: string; text: string};
+
+export const cleanVttBlock = (block: VttBlock): VttBlock => {
+  const text = block.text
+    .replace(/<\/?c>/g, '') // remove c tags
+    .replace(/<\d{2}:\d{2}:\d{2}\.\d{3}>/g, '') // Remove inline timestamps
+    .replace(/\[.*?\]/g, '') // remove things like [Music]
+    .replace(/\s+/g, ' ') // merge whitespaces
+    .trim();
+
+  const header = block.header
+    .split(' ')
+    .slice(0, 3)
+    .map((part, i) => (i === 0 || i === 2 ? formatTimestamp(part) : part))
+    .join(' ');
+
+  return {header, text};
 };
 
-export const getDisplayableVttContent = (vttContent: string): string => {
+const formatTimestamp = (timestamp: string): string =>
+  timestamp.replace(/(\d{2}:\d{2}:\d{2})\.\d{3}/, '$1');
+
+export const splitToBlocks = (transcript: string) => {
+  const arr = transcript.split(
+    /\n(?=\d{2}:\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}:\d{2}\.\d{3})/,
+  );
+  const blocks: {header: string; text: string}[] = [];
+
+  for (const block of arr) {
+    const [header, ...text] = block.split('\n');
+    blocks.push({header, text: text.join('\n').trim()});
+  }
+  return blocks.filter(b => b.text);
+};
+
+export const cleanWebVtt = (transcript: string) => {
+  const blocks = splitToBlocks(transcript);
+  const cleaned = blocks.map(cleanVttBlock);
+
+  const result = [];
+
+  for (const block of cleaned) {
+    result.push(block.header);
+    result.push(block.text);
+    result.push('');
+  }
+  return result.join('\n');
+};
+
+export const getWebVttHtml = (vttContent: string): string => {
   const lines = vttContent.trim().split('\n');
   let output = '';
 
@@ -38,4 +80,9 @@ export const getDisplayableVttContent = (vttContent: string): string => {
     }
   }
   return output;
+};
+
+export const timeToSeconds = (time: string): number => {
+  const [h, m, s] = time.split(':').map(Number);
+  return h * 3600 + m * 60 + s;
 };

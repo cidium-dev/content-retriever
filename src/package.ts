@@ -1,5 +1,4 @@
-export type {ExtractRequestBody} from './index';
-export type {ExtractedContent} from './lib/db';
+export type {ResourceData} from '~/lib/db';
 
 export enum ResourceType {
   WEB = 'WEB',
@@ -15,3 +14,6 @@ export enum ResourceType {
   YOUTUBE = 'YOUTUBE',
   UNKNOWN = 'UNKNOWN',
 }
+
+export {timeToSeconds} from '~/utils/vtt';
+export {default as indexing} from '~/utils/indexing';

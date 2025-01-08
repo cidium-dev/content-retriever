@@ -1,23 +1,27 @@
-import {PrismaClient, ResourceType} from '@prisma/client';
+import {PrismaClient} from '@prisma/client';
+import {ResourceType} from '~/package';
 
 const prisma = new PrismaClient();
 
-export type ExtractedContent = {
+export type ResourceData = {
+  url: string;
   type: ResourceType;
   title?: string;
   content_html?: string;
   content_text: string;
+  content_indexed: string;
   lang?: string;
   published_at?: Date;
 };
 
-export const upsertResource = async (url: string, data: ExtractedContent) => {
+export const upsertResource = async (url: string, data: ResourceData) => {
   return await prisma.resource.upsert({
     where: {url},
     update: {
       title: data.title,
       content_html: data.content_html,
-      content_text: data.content_html,
+      content_text: data.content_text,
+      content_indexed: data.content_indexed,
       published_at: data.published_at,
       lang: data.lang,
       unprocessable: false,
@@ -28,6 +32,7 @@ export const upsertResource = async (url: string, data: ExtractedContent) => {
       title: data.title,
       content_html: data.content_html,
       content_text: data.content_text,
+      content_indexed: data.content_indexed,
       published_at: data.published_at,
       lang: data.lang,
       unprocessable: false,

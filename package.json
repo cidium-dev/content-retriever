@@ -26,7 +26,7 @@
     "@fastify/cors": "^10.0.1",
     "@mozilla/readability": "^0.5.0",
     "@playwright/test": "^1.49.1",
-    "@prisma/client": "^6.1.0",
+    "@prisma/client": "^6.2.0",
     "axios": "^1.7.9",
     "docx": "^9.1.0",
     "fastify": "^5.2.0",
@@ -48,7 +48,7 @@
     "@types/jsdom": "^21.1.7",
     "@types/node": "^22.10.3",
     "gts": "^6.0.2",
-    "prisma": "^6.1.0",
+    "prisma": "^6.2.0",
     "tsup": "^8.3.5",
     "typescript": "~5.7.2"
   },

@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
@@ -23,14 +24,15 @@ enum ResourceType {
 }
 
 model Resource {
-  url           String       @id @map("_id")
-  unprocessable Boolean      @default(false)
-  title         String?
-  content_html  String?
-  content_text  String?
-  published_at  DateTime?
-  lang          String?
-  type          ResourceType
-  created_at    DateTime     @default(now())
-  updated_at    DateTime     @updatedAt
+  url             String       @id @map("_id")
+  unprocessable   Boolean      @default(false)
+  title           String?
+  content_html    String?
+  content_text    String?
+  content_indexed String?
+  published_at    DateTime?
+  lang            String?
+  type            ResourceType
+  created_at      DateTime     @default(now())
+  updated_at      DateTime     @updatedAt
 }

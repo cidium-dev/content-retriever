@@ -3,7 +3,7 @@ import cors from '@fastify/cors';
 import {z} from 'zod';
 import {serializerCompiler, validatorCompiler} from 'fastify-type-provider-zod';
 
-import {extractAndSaveContent, getCachedContent} from './lib';
+import {extractAndSaveContent, getCachedContent} from '~/lib';
 
 const fastify = Fastify({logger: true});
 
@@ -17,18 +17,20 @@ const checkApiKey = (req: FastifyRequest) => {
   return apiKey === process.env.API_KEY;
 };
 
-const ZExtractRquestBody = z.object({url: z.string().url()});
-export type ExtractRequestBody = z.infer<typeof ZExtractRquestBody>;
-
 fastify.post(
   '/api/extract',
-  {schema: {body: ZExtractRquestBody}},
-  async (req: FastifyRequest<{Body: ExtractRequestBody}>, reply) => {
+  {schema: {body: z.object({url: z.string().url()})}},
+  async (req: FastifyRequest<{Body: {url: string}}>, reply) => {
     if (!checkApiKey(req)) {
       return reply.code(401).send({error: 'UNAUTHORIZED'});
     }
     const url = req.body.url;
-    return (await getCachedContent(url)) || (await extractAndSaveContent(url));
+    const cached = await getCachedContent(url);
+
+    if (cached) {
+      return cached;
+    }
+    return await extractAndSaveContent(url);
   },
 );
 

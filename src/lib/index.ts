@@ -7,8 +7,10 @@ export const getCachedContent = async (url: string) => {
   if (cached.unprocessable) throw new Error('UNPROCESSABLE');
 
   return {
+    url: cached.url,
     type: cached.type,
     title: cached.title,
+    content_indexed: cached.content_indexed,
     content_html: cached.content_html,
     content_text: cached.content_text,
     lang: cached.lang,

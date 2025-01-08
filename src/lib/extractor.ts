@@ -7,18 +7,15 @@ import {franc} from 'franc';
 import {Readability} from '@mozilla/readability';
 import {PDFExtract} from 'pdf.js-extract';
 
-import type {ExtractedContent} from './db';
+import type {ResourceData} from './db';
+import {ResourceType} from '~/package';
 
-import {getPageContent, getPageContentDirect} from '../services/browser';
-import {
-  downloadSubtitles,
-  extractVideoId,
-  getVideosMetadata,
-} from '../services/youtube';
+import youtube from '~/services/youtube';
+import browser from '~/services/browser';
 
-import {resolveRedirects} from '../utils/redirects';
-import {cleanWebVtt, getDisplayableVttContent} from '../utils/vtt';
-import {ResourceType} from '@prisma/client';
+import {resolveRedirects} from '~/utils/redirects';
+import {cleanWebVtt, getWebVttHtml} from '~/utils/vtt';
+import indexing from '~/utils/indexing';
 
 const extensionToEnum: Record<string, ResourceType> = {
   '.json': ResourceType.JSON,
@@ -92,8 +89,8 @@ const determineContentType = async (url: string): Promise<ResourceType> => {
 
 const extractWebpageContent = async (
   url: string,
-): Promise<ExtractedContent | undefined> => {
-  const content = await getPageContent(url);
+): Promise<ResourceData | undefined> => {
+  const content = await browser.getPageContent(url);
   console.log(content);
   const doc = new JSDOM(content);
 
@@ -105,29 +102,42 @@ const extractWebpageContent = async (
 
   if (!tmp) return undefined;
 
+  const contentHtml = tmp.content ? String(tmp.content).trim() : undefined;
+  const contentText = tmp.textContent.trim();
+  const contentIndexed = indexing.indexContent(contentText);
+
   return {
+    url: url,
     type: ResourceType.WEB,
     title: tmp.title ? String(tmp.title).trim() : undefined,
-    content_html: tmp.content ? String(tmp.content).trim() : undefined,
-    content_text: tmp.textContent.trim(),
+    content_html: contentHtml,
+    content_text: contentText,
+    content_indexed: contentIndexed,
     lang: tmp.lang ? String(tmp.lang).trim() : undefined,
     published_at: tmp.publishedTime ? new Date(tmp.publishedTime) : undefined,
   };
 };
 
-const extractDocx = async (buffer: Buffer): Promise<ExtractedContent> => {
+const extractDocx = async (url: string): Promise<ResourceData> => {
+  const buffer = await browser.getPageContentDirect(url);
+
   const [textResult, htmlResult] = await Promise.all([
     mammoth.extractRawText({buffer}),
     mammoth.convertToHtml({buffer}),
   ]);
+  const indexed = indexing.indexContent(textResult.value);
+
   return {
+    url: url,
     type: ResourceType.DOCX,
     content_html: htmlResult.value,
     content_text: textResult.value,
+    content_indexed: indexed,
   };
 };
 
-const extractXlsx = async (buffer: Buffer): Promise<ExtractedContent> => {
+const extractXlsx = async (url: string): Promise<ResourceData> => {
+  const buffer = await browser.getPageContentDirect(url);
   const workbook = XLSX.read(buffer);
 
   const sheetsTxt = workbook.SheetNames.map(name => {
@@ -138,17 +148,25 @@ const extractXlsx = async (buffer: Buffer): Promise<ExtractedContent> => {
     const sheet = workbook.Sheets[name];
     return `Sheet: ${name}\n${XLSX.utils.sheet_to_html(sheet)}`;
   });
+  const contentHtml = sheetsHtml.join('\n\n');
+  const contentText = sheetsTxt.join('\n\n');
+  const contentIndexed = indexing.indexXlsxContent(contentText);
+
   return {
+    url: url,
     type: ResourceType.XLSX,
     title: workbook.Props?.Title,
-    content_html: sheetsHtml.join('\n\n'),
-    content_text: sheetsTxt.join('\n\n'),
+    content_html: contentHtml,
+    content_text: contentText,
+    content_indexed: contentIndexed,
     lang: workbook.Props?.Language,
     published_at: workbook.Props?.ModifiedDate,
   };
 };
 
-const extractPdf = async (buffer: Buffer): Promise<ExtractedContent> => {
+const extractPdf = async (url: string): Promise<ResourceData> => {
+  const buffer = await browser.getPageContentDirect(url);
+
   const pdfExtract = new PDFExtract();
   const data = await pdfExtract.extractBuffer(buffer);
 
@@ -158,70 +176,96 @@ const extractPdf = async (buffer: Buffer): Promise<ExtractedContent> => {
         `Page ${idx + 1}:\n${page.content.map(item => item.str).join(' ')}`,
     )
     .join('\n\n');
+  const contentIndexed = indexing.indexContent(contentText);
 
-  return {type: ResourceType.PDF, content_text: contentText};
+  return {
+    url: url,
+    type: ResourceType.PDF,
+    content_text: contentText,
+    content_indexed: contentIndexed,
+  };
 };
 
-const extractDoc = async (buffer: Buffer): Promise<ExtractedContent> => {
+const extractDoc = async (
+  url: string,
+  buffer: Buffer,
+): Promise<ResourceData> => {
+  const contentText = await officeparser.parseOfficeAsync(buffer);
+  const contentIndexed = indexing.indexContent(contentText);
+
   return {
+    url: url,
     type: ResourceType.UNKNOWN,
-    content_text: await officeparser.parseOfficeAsync(buffer),
+    content_text: contentText,
+    content_indexed: contentIndexed,
   };
 };
 
 const extractYoutubeVideo = async (
   url: string,
-): Promise<ExtractedContent | undefined> => {
-  const videoId = extractVideoId(url);
+): Promise<ResourceData | undefined> => {
+  const videoId = youtube.extractVideoId(url);
   if (!videoId) return undefined;
 
   const [[metadata], subtitlesPath] = await Promise.all([
-    getVideosMetadata([videoId]),
-    downloadSubtitles(videoId),
+    youtube.getVideosMetadata([videoId]),
+    youtube.downloadSubtitles(videoId),
   ]);
   const subtitles = readFileSync(subtitlesPath, 'utf-8');
 
+  const contentText = cleanWebVtt(subtitles);
+  const contentHtml = getWebVttHtml(subtitles);
+  const contentIndexed = indexing.indexWebVttContent(subtitles);
+
+  const lang =
+    metadata.defaultAudioLanguage || metadata.defaultLanguage || undefined;
+
+  const publishedAt = metadata.publishedAt
+    ? new Date(metadata.publishedAt)
+    : undefined;
+
   return {
+    url: url,
     type: ResourceType.YOUTUBE,
     title: metadata.title || undefined,
-    content_html: getDisplayableVttContent(subtitles),
-    content_text: cleanWebVtt(subtitles),
-    lang:
-      metadata.defaultAudioLanguage || metadata.defaultLanguage || undefined,
-    published_at: metadata.publishedAt
-      ? new Date(metadata.publishedAt)
-      : undefined,
+    content_html: contentHtml,
+    content_text: contentText,
+    content_indexed: contentIndexed,
+    lang: lang,
+    published_at: publishedAt,
   };
 };
 
 const extractContent = async (
   url: string,
-): Promise<ExtractedContent | undefined> => {
+): Promise<ResourceData | undefined> => {
   url = await resolveRedirects(url);
   const pageType = await determineContentType(url);
 
-  let data: ExtractedContent | undefined;
+  let data: ResourceData | undefined;
 
   if (pageType === ResourceType.DOCX) {
-    const buffer = await getPageContentDirect(url);
-    data = await extractDocx(buffer);
+    data = await extractDocx(url);
   } else if (pageType === ResourceType.PDF) {
-    const buffer = await getPageContentDirect(url);
-    data = await extractPdf(buffer);
+    data = await extractPdf(url);
   } else if (pageType === ResourceType.XLSX) {
-    const buffer = await getPageContentDirect(url);
-    data = await extractXlsx(buffer);
+    data = await extractXlsx(url);
   } else if (
     pageType === ResourceType.PPTX ||
     pageType === ResourceType.ODT ||
     pageType === ResourceType.ODP ||
     pageType === ResourceType.ODS
   ) {
-    const buffer = await getPageContentDirect(url);
-    data = await extractDoc(buffer);
+    const buffer = await browser.getPageContentDirect(url);
+    data = await extractDoc(url, buffer);
   } else if (pageType === ResourceType.JSON) {
-    const content = (await getPageContentDirect(url)).toString();
-    data = {type: ResourceType.JSON, content_text: content};
+    const content = (await browser.getPageContentDirect(url)).toString();
+    data = {
+      url: url,
+      type: ResourceType.JSON,
+      content_text: content,
+      content_indexed: indexing.indexJsonContent(content),
+    };
   } else if (pageType === ResourceType.YOUTUBE) {
     data = await extractYoutubeVideo(url);
   } else {

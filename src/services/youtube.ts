@@ -17,7 +17,7 @@ if (!basePath) {
 const execAsync = promisify(exec);
 const api = google.youtube({version: 'v3', auth: youtubeApiKey});
 
-export const downloadVideo = async (videoId: string) => {
+const downloadVideo = async (videoId: string) => {
   const outputPathBase = resolve(basePath, `videos/${videoId}`);
   const outputPath1 = outputPathBase + '.webm';
   const outputPath2 = outputPathBase + '.m4a';
@@ -80,9 +80,9 @@ export enum EnglishLangCode {
   enAuto = 'en.auto',
 }
 
-export const englishLangCodes = Object.values(EnglishLangCode);
+const englishLangCodes = Object.values(EnglishLangCode);
 
-export const downloadSubtitles = async (videoId: string) => {
+const downloadSubtitles = async (videoId: string) => {
   const outputPath = resolve(basePath, `transcripts/${videoId}.vtt`);
   try {
     const transcripts = await downloadSubtitlesLang(videoId, englishLangCodes);
@@ -107,7 +107,7 @@ export const downloadSubtitles = async (videoId: string) => {
 
 export type VideoMetadata = youtube_v3.Schema$VideoSnippet;
 
-export const getVideosMetadata = async (videoIds: string[]) => {
+const getVideosMetadata = async (videoIds: string[]) => {
   const response = await api.videos.list({
     part: ['snippet'],
     id: videoIds,
@@ -124,7 +124,7 @@ export const getVideosMetadata = async (videoIds: string[]) => {
   return snippets as VideoMetadata[];
 };
 
-export const extractVideoId = (url: string): string => {
+const extractVideoId = (url: string): string => {
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
   const match = url.match(regExp);
 

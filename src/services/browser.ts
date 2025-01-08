@@ -17,7 +17,7 @@ const getBrowser = (() => {
   };
 })();
 
-export const createPage = async (url?: string, waitForLoad = false) => {
+const createPage = async (url?: string, waitForLoad = false) => {
   const browser = await getBrowser();
 
   const context = await browser.newContext({
@@ -48,7 +48,7 @@ export const createPage = async (url?: string, waitForLoad = false) => {
   return page;
 };
 
-export const getPageContent = async (url: string) => {
+const getPageContent = async (url: string) => {
   const page = await createPage(url);
   try {
     return await page.content();
@@ -57,7 +57,10 @@ export const getPageContent = async (url: string) => {
   }
 };
 
-export const getPageContentDirect = async (url: string) => {
+const getPageContentDirect = async (url: string) => {
   const res = await fetch(url);
   return Buffer.from(await res.arrayBuffer());
 };
+
+const browser = {getPageContent, getPageContentDirect, createPage};
+export default browser;
