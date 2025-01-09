@@ -19,7 +19,7 @@
     "fix": "gts fix",
     "posttest": "npm run lint",
     "codegen": "prisma generate",
-    "build": "tsup src/package.ts --format esm,cjs --treeshake smallest --dts --minify -d build"
+    "build": "tsup src/package.ts --format esm,cjs --treeshake smallest --dts -d build"
   },
   "dependencies": {
     "@anthropic-ai/tokenizer": "^0.0.4",

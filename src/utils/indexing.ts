@@ -1,5 +1,4 @@
 import type {ResourceData} from '~/lib/db';
-import {ResourceType} from '~/package';
 import {cleanVttBlock, splitToBlocks} from './vtt';
 
 const getSentences = (text: string): string[] => {
@@ -51,34 +50,12 @@ const getContent = (
   resource: ResourceData,
   startIndex: number,
   endIndex: number,
-): string | {startTime: string; endTime: string} => {
-  switch (resource.type) {
-    case ResourceType.JSON:
-      return getJsonContent(resource.content_text, startIndex, endIndex);
-    case ResourceType.YOUTUBE:
-      return getVttTimestamps(resource.content_text, startIndex, endIndex);
-    default:
-      return resource.content_indexed
-        .split('\n')
-        .slice(startIndex, endIndex + 1)
-        .map(line => line.substring(line.indexOf(' ')).trim())
-        .join('\n');
-  }
-};
-
-const getJsonContent = (
-  jsonContent: string,
-  startIndex: number,
-  endIndex: number,
 ): string => {
-  const lines = JSON.stringify(JSON.parse(jsonContent), null, 1).split('\n');
-
-  const selectedLines = lines
-    .filter(line => line.trim())
+  return resource.content_indexed
+    .split('\n')
     .slice(startIndex, endIndex + 1)
-    .map(line => line.trim());
-
-  return selectedLines.join('\n');
+    .map(line => line.substring(line.indexOf(' ')).trim())
+    .join('\n');
 };
 
 const getVttTimestamps = (
@@ -96,17 +73,28 @@ const getVttTimestamps = (
     const {text} = cleanVttBlock(blocks[blockIndex]);
     const sentences = getSentences(text);
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    for (const sentence of sentences) {
-      if (currentIndex === startIndex) startBlockIndex = blockIndex;
-      if (currentIndex === endIndex) {
-        endBlockIndex = blockIndex;
-        break;
-      }
-      currentIndex++;
+    if (
+      currentIndex <= startIndex &&
+      currentIndex + sentences.length > startIndex
+    ) {
+      startBlockIndex = blockIndex;
     }
-    if (currentIndex >= endIndex) break;
+    if (
+      currentIndex <= endIndex &&
+      currentIndex + sentences.length > endIndex
+    ) {
+      endBlockIndex = blockIndex;
+      break;
+    }
+    currentIndex += sentences.length;
   }
+  console.log(
+    startBlockIndex,
+    endBlockIndex,
+    currentIndex,
+    startIndex,
+    endIndex,
+  );
   const [startTime] = blocks[startBlockIndex].header.split(' --> ');
   const [, endTime] = blocks[endBlockIndex].header.split(' --> ');
 
@@ -119,7 +107,6 @@ const indexing = {
   indexWebVttContent,
   indexJsonContent,
   getContent,
-  getJsonContent,
   getVttTimestamps,
 };
 

@@ -32,7 +32,7 @@ const formatTimestamp = (timestamp: string): string =>
 
 export const splitToBlocks = (transcript: string) => {
   const arr = transcript.split(
-    /\n(?=\d{2}:\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}:\d{2}\.\d{3})/,
+    /\n(?=\d{2}:\d{2}:\d{2}(?:\.\d{3})? --> \d{2}:\d{2}:\d{2}(?:\.\d{3})?)/,
   );
   const blocks: {header: string; text: string}[] = [];
 

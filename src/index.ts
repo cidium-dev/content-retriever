@@ -2,7 +2,6 @@ import Fastify, {type FastifyRequest} from 'fastify';
 import cors from '@fastify/cors';
 import {z} from 'zod';
 import {serializerCompiler, validatorCompiler} from 'fastify-type-provider-zod';
-
 import {extractAndSaveContent, getCachedContent} from '~/lib';
 
 const fastify = Fastify({logger: true});
