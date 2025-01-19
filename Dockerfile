@@ -11,5 +11,4 @@ COPY . .
 
 EXPOSE $PORT
 
-CMD ["bun", "codegen"]
-CMD ["bun", "start"]
+CMD bun codegen && bun start
