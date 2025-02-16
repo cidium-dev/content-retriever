@@ -12,4 +12,4 @@ COPY . .
 
 EXPOSE $PORT
 
-CMD bun codegen && bun start
+CMD bunx playwright install-deps && bunx playwright install &&bun codegen && bun start
