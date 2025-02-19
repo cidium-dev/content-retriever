@@ -17,7 +17,6 @@
     "lint": "gts lint",
     "clean": "gts clean",
     "fix": "gts fix",
-    "posttest": "npm run lint",
     "codegen": "prisma generate",
     "build": "tsup src/package.ts --format esm,cjs --treeshake smallest --dts -d build"
   },
