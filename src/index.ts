@@ -38,7 +38,9 @@ fastify.setErrorHandler(async (error, request, reply) => {
     {err: error, stack: error.stack, message: error.message},
     'Request failed',
   );
-  await reply.status(500).send({error: 'Internal Server Error'});
+  await reply
+    .status(500)
+    .send({error: `Internal Server Error: ${error.message}`});
 });
 
 const port = parseInt(process.env.PORT || '3002');
