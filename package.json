@@ -21,34 +21,32 @@
     "build": "tsup src/package.ts --format esm,cjs --treeshake smallest --dts -d build"
   },
   "dependencies": {
-    "@fastify/cors": "^10.0.1",
+    "@fastify/cors": "^10.0.2",
     "@mozilla/readability": "^0.5.0",
-    "@playwright/test": "^1.49.1",
-    "@prisma/client": "^6.2.0",
+    "@playwright/test": "^1.50.1",
+    "@prisma/client": "^6.4.1",
     "axios": "^1.7.9",
-    "docx": "^9.1.0",
-    "fastify": "^5.2.0",
+    "docx": "^9.2.0",
+    "fastify": "^5.2.1",
     "fastify-type-provider-zod": "^4.0.2",
     "franc": "^6.2.0",
     "googleapis": "^144.0.0",
-    "js-tiktoken": "^1.0.16",
-    "jsdom": "^25.0.1",
+    "js-tiktoken": "^1.0.19",
+    "jsdom": "^26.0.0",
     "mammoth": "^1.9.0",
     "officeparser": "^5.1.1",
     "pdf.js-extract": "^0.2.1",
-    "pino": "^9.6.0",
-    "pino-pretty": "^13.0.0",
     "xlsx": "^0.18.5",
-    "zod": "^3.24.1"
+    "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@types/bun": "^1.1.14",
+    "@types/bun": "^1.2.2",
     "@types/jsdom": "^21.1.7",
-    "@types/node": "^22.10.3",
+    "@types/node": "^22.13.5",
     "gts": "^6.0.2",
-    "prisma": "^6.2.0",
-    "tsup": "^8.3.5",
-    "typescript": "~5.7.2"
+    "prisma": "^6.4.1",
+    "tsup": "^8.3.6",
+    "typescript": "~5.7.3"
   },
   "engines": {
     "node": ">=20.0.0"
