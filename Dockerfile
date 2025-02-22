@@ -20,9 +20,10 @@ COPY package.json .
 COPY bun.lockb .
 
 RUN bun install --frozen-lockfile
-RUN bun codegen
 
 COPY . .
+
+RUN bun codegen
 
 EXPOSE $PORT
 
