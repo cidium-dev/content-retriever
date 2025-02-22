@@ -17,7 +17,7 @@ const getBrowser = (() => {
   };
 })();
 
-const createPage = async (url?: string, waitForLoad = false) => {
+const createPage = async (url?: string) => {
   const browser = await getBrowser();
 
   const context = await browser.newContext({
@@ -40,10 +40,15 @@ const createPage = async (url?: string, waitForLoad = false) => {
   if (!url) return page;
 
   try {
-    await page.goto(url, {waitUntil: waitForLoad ? 'networkidle' : undefined});
-  } catch (e) {
+    await page.goto(url);
+
+    await Promise.race([
+      page.waitForLoadState('networkidle'),
+      page.waitForLoadState('load').then(() => page.waitForTimeout(5000)),
+    ]);
+  } catch (error) {
     await page.close();
-    throw e;
+    throw error;
   }
   return page;
 };

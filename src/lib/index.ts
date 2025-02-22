@@ -1,5 +1,5 @@
 import {getResource, markAsUnprocessable, upsertResource} from './db';
-import extractContent from './extractor';
+import {extractContent} from './extractor';
 
 export const getCachedContent = async (url: string) => {
   const cached = await getResource(url);

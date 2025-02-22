@@ -2,12 +2,10 @@ import axios, {AxiosError} from 'axios';
 import browser from '~/services/browser';
 
 const resolveRedirectsWithBrowser = async (url: string) => {
-  const page = await browser.createPage(url, false);
+  const page = await browser.createPage(url);
+
   try {
-    await page.waitForNavigation({waitUntil: 'load', timeout: 10000});
     return page.url();
-  } catch (e) {
-    return url;
   } finally {
     await page.close();
   }

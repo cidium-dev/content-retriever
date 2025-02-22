@@ -3,6 +3,7 @@ import cors from '@fastify/cors';
 import {z} from 'zod';
 import {serializerCompiler, validatorCompiler} from 'fastify-type-provider-zod';
 import {extractAndSaveContent, getCachedContent} from '~/lib';
+import {extractMetadata} from './lib/extractor';
 
 const fastify = Fastify({logger: true});
 
@@ -30,6 +31,18 @@ fastify.post(
       return cached;
     }
     return await extractAndSaveContent(url);
+  },
+);
+
+fastify.post(
+  '/api/metadata',
+  {schema: {body: z.object({url: z.string().url()})}},
+  async (req: FastifyRequest<{Body: {url: string}}>, reply) => {
+    if (!checkApiKey(req)) {
+      return reply.code(401).send({error: 'UNAUTHORIZED'});
+    }
+    const url = req.body.url;
+    return await extractMetadata(url);
   },
 );
 

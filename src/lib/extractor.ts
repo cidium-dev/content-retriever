@@ -91,7 +91,6 @@ const extractWebpageContent = async (
   url: string,
 ): Promise<ResourceData | undefined> => {
   const content = await browser.getPageContent(url);
-  console.log(content);
   const doc = new JSDOM(content);
 
   // if (!isProbablyReaderable(doc.window.document)) {
@@ -282,4 +281,17 @@ const extractContent = async (
   return data;
 };
 
-export default extractContent;
+const extractMetadata = async (
+  url: string,
+): Promise<{title: string; type: ResourceType}> => {
+  const content = await browser.getPageContent(url);
+  const doc = new JSDOM(content);
+  const type = await determineContentType(url);
+
+  return {
+    title: doc.window.document.title,
+    type,
+  };
+};
+
+export {extractContent, extractMetadata};
