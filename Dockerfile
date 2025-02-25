@@ -2,7 +2,9 @@ FROM mcr.microsoft.com/playwright:v1.50.0-noble
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y \
+RUN add-apt-repository ppa:tomtomtom/yt-dlp && \
+  apt-get update && \
+  apt-get install -y \
   unzip \
   libnss3 \
   libatk-bridge2.0-0 \
@@ -11,7 +13,9 @@ RUN apt-get update && apt-get install -y \
   libgbm-dev \
   libasound-dev \
   libatspi2.0-0 \
-  libxshmfence-dev
+  libxshmfence-dev \
+  software-properties-common \
+  yt-dlp
 
 RUN curl -fsSL https://bun.sh/install | bash
 ENV PATH="/root/.bun/bin:${PATH}"
