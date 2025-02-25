@@ -36,3 +36,9 @@ model Resource {
   created_at      DateTime     @default(now())
   updated_at      DateTime     @updatedAt
 }
+
+model ResourceMetadata {
+  url   String       @id @map("_id")
+  title String
+  type  ResourceType
+}

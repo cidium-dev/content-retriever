@@ -2,8 +2,13 @@ import Fastify, {type FastifyRequest} from 'fastify';
 import cors from '@fastify/cors';
 import {z} from 'zod';
 import {serializerCompiler, validatorCompiler} from 'fastify-type-provider-zod';
-import {extractAndSaveContent, getCachedContent} from '~/lib';
+import {
+  extractAndSaveContent,
+  extractAndSaveMetadata,
+  getCachedContent,
+} from '~/lib';
 import {extractMetadata} from './lib/extractor';
+import {getResourceMetadata} from './lib/db';
 
 const fastify = Fastify({logger: true});
 
@@ -42,7 +47,12 @@ fastify.post(
       return reply.code(401).send({error: 'UNAUTHORIZED'});
     }
     const url = req.body.url;
-    return await extractMetadata(url);
+    const cached = await getResourceMetadata(url);
+
+    if (cached) {
+      return cached;
+    }
+    return await extractAndSaveMetadata(url);
   },
 );
 

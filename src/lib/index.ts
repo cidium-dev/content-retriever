@@ -1,5 +1,10 @@
-import {getResource, markAsUnprocessable, upsertResource} from './db';
-import {extractContent} from './extractor';
+import {
+  getResource,
+  markAsUnprocessable,
+  upsertResource,
+  upsertResourceMetadata,
+} from './db';
+import {extractContent, extractMetadata} from './extractor';
 
 export const getCachedContent = async (url: string) => {
   const cached = await getResource(url);
@@ -25,5 +30,14 @@ export const extractAndSaveContent = async (url: string) => {
     throw new Error('UNPROCESSABLE');
   }
   await upsertResource(url, content);
+  return content;
+};
+
+export const extractAndSaveMetadata = async (url: string) => {
+  const content = await extractMetadata(url);
+
+  if (content.title) {
+    await upsertResourceMetadata(url, content);
+  }
   return content;
 };

@@ -44,6 +44,21 @@ export const getResource = async (url: string) => {
   return await prisma.resource.findUnique({where: {url}});
 };
 
+export const getResourceMetadata = async (url: string) => {
+  return await prisma.resourceMetadata.findUnique({where: {url}});
+};
+
+export const upsertResourceMetadata = async (
+  url: string,
+  metadata: {title: string; type: ResourceType},
+) => {
+  return await prisma.resourceMetadata.upsert({
+    where: {url},
+    create: {...metadata, url},
+    update: metadata,
+  });
+};
+
 export const markAsUnprocessable = async (url: string) => {
   return await prisma.resource.upsert({
     where: {url},
