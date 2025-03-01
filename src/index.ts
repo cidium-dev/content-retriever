@@ -61,6 +61,7 @@ fastify.setErrorHandler(async (error, request, reply) => {
     {err: error, stack: error.stack, message: error.message},
     'Request failed',
   );
+  console.error(error);
   await reply
     .status(500)
     .send({error: `Internal Server Error: ${error.message}`});
