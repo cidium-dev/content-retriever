@@ -7,8 +7,8 @@ import {
   extractAndSaveMetadata,
   getCachedContent,
 } from '~/lib';
-import {extractMetadata} from './lib/extractor';
 import {getResourceMetadata} from './lib/db';
+import {renderMarkdownToHtml} from './lib/markdown';
 
 const fastify = Fastify({logger: true});
 
@@ -53,6 +53,17 @@ fastify.post(
       return cached;
     }
     return await extractAndSaveMetadata(url);
+  },
+);
+
+fastify.post(
+  '/api/markdownToHtml',
+  {schema: {body: z.object({markdown: z.string()})}},
+  async (req: FastifyRequest<{Body: {markdown: string}}>, reply) => {
+    if (!checkApiKey(req)) {
+      return reply.code(401).send({error: 'UNAUTHORIZED'});
+    }
+    return {html: await renderMarkdownToHtml(req.body.markdown)};
   },
 );
 

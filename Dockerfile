@@ -2,18 +2,7 @@ FROM mcr.microsoft.com/playwright:v1.50.0-noble
 
 WORKDIR /app
 
-RUN apt-get update && \
-  apt-get install -y \
-  unzip \
-  libnss3 \
-  libatk-bridge2.0-0 \
-  libdrm-dev \
-  libxkbcommon-dev \
-  libgbm-dev \
-  libasound-dev \
-  libatspi2.0-0 \
-  libxshmfence-dev \
-  software-properties-common
+RUN apt-get update && apt-get install -y unzip software-properties-common
 
 RUN mkdir -p ~/.local/bin && \
   curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o ~/.local/bin/yt-dlp && \
