@@ -47,7 +47,8 @@ var indexWebVttContent = (vtt) => {
       if (last && trimmed.startsWith(last)) {
         trimmed = trimmed.slice(last.length).trim();
       }
-      if (trimmed) indexed.push(trimmed);
+      if (!trimmed) continue;
+      indexed.push(trimmed);
     }
   }
   return indexed.map((s, i) => `${i} ${s}`).join("\n");
@@ -73,7 +74,8 @@ var getVttTimestamps = (vttContent, startIndex, endIndex) => {
       if (last && trimmed.startsWith(last)) {
         trimmed = trimmed.slice(last.length).trim();
       }
-      if (trimmed) indexed.push(trimmed);
+      if (!trimmed) continue;
+      indexed.push(trimmed);
       const currentIndex = indexed.length - 1;
       if (currentIndex === startIndex) {
         startBlockIndex = blockIndex;
@@ -88,6 +90,7 @@ var getVttTimestamps = (vttContent, startIndex, endIndex) => {
   const [startTime] = blocks[startBlockIndex].header.split(" --> ");
   const [, endTime] = blocks[endBlockIndex].header.split(" --> ");
   console.log(startBlockIndex, endBlockIndex);
+  console.log(indexed.slice(startIndex, endIndex + 1));
   console.log(blocks.slice(startBlockIndex, endBlockIndex + 1));
   return { startTime: startTime.trim(), endTime: endTime.trim() };
 };

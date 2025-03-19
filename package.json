@@ -18,7 +18,7 @@
     "clean": "gts clean",
     "fix": "gts fix",
     "codegen": "prisma generate",
-    "build": "tsup src/package.ts --format esm,cjs --treeshake smallest --dts -d build"
+    "compile": "tsup src/package.ts --format esm,cjs --treeshake smallest --dts -d build"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.2",
