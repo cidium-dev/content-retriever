@@ -35,18 +35,22 @@ var indexXlsxContent = (text) => {
   const rows = text.split("\n");
   return rows.filter((row) => row.trim()).map((row, index) => `${index} ${row.trim()}`).join("\n");
 };
-var indexWebVttContent = (text) => {
-  const blocks = splitToBlocks(text);
+var indexWebVttContent = (vtt) => {
+  const blocks = splitToBlocks(vtt);
   const indexed = [];
-  let currentIndex = 0;
   for (const block of blocks) {
-    const { text: text2 } = cleanVttBlock(block);
-    const sentences = getSentences(text2);
+    const { text } = cleanVttBlock(block);
+    const sentences = getSentences(text);
     for (const sentence of sentences) {
-      indexed.push(`${currentIndex++} ${sentence.trim()}`);
+      const last = indexed[indexed.length - 1];
+      let trimmed = sentence.trim();
+      if (last && trimmed.startsWith(last)) {
+        trimmed = trimmed.slice(last.length).trim();
+      }
+      if (trimmed) indexed.push(trimmed);
     }
   }
-  return indexed.join("\n");
+  return indexed.map((s, i) => `${i} ${s}`).join("\n");
 };
 var indexJsonContent = (text) => {
   const rows = JSON.stringify(text, null, 1).split("\n");
@@ -57,30 +61,34 @@ var getContent = (resource, startIndex, endIndex) => {
 };
 var getVttTimestamps = (vttContent, startIndex, endIndex) => {
   const blocks = splitToBlocks(vttContent);
-  let currentIndex = 0;
+  const indexed = [];
   let startBlockIndex = 0;
   let endBlockIndex = 0;
   for (let blockIndex = 0; blockIndex < blocks.length; blockIndex++) {
     const { text } = cleanVttBlock(blocks[blockIndex]);
     const sentences = getSentences(text);
-    if (currentIndex <= startIndex && currentIndex + sentences.length > startIndex) {
-      startBlockIndex = blockIndex;
+    for (const sentence of sentences) {
+      const last = indexed[indexed.length - 1];
+      let trimmed = sentence.trim();
+      if (last && trimmed.startsWith(last)) {
+        trimmed = trimmed.slice(last.length).trim();
+      }
+      if (trimmed) indexed.push(trimmed);
+      const currentIndex = indexed.length - 1;
+      if (currentIndex === startIndex) {
+        startBlockIndex = blockIndex;
+      }
+      if (currentIndex === endIndex) {
+        endBlockIndex = blockIndex;
+        break;
+      }
     }
-    if (currentIndex <= endIndex && currentIndex + sentences.length > endIndex) {
-      endBlockIndex = blockIndex;
-      break;
-    }
-    currentIndex += sentences.length;
+    if (endBlockIndex > 0) break;
   }
-  console.log(
-    startBlockIndex,
-    endBlockIndex,
-    currentIndex,
-    startIndex,
-    endIndex
-  );
   const [startTime] = blocks[startBlockIndex].header.split(" --> ");
   const [, endTime] = blocks[endBlockIndex].header.split(" --> ");
+  console.log(startBlockIndex, endBlockIndex);
+  console.log(blocks.slice(startBlockIndex, endBlockIndex + 1));
   return { startTime: startTime.trim(), endTime: endTime.trim() };
 };
 var indexing = {

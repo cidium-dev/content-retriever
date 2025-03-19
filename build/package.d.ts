@@ -14,7 +14,7 @@ declare const timeToSeconds: (time: string) => number;
 declare const indexing: {
     indexContent: (text: string) => string;
     indexXlsxContent: (text: string) => string;
-    indexWebVttContent: (text: string) => string;
+    indexWebVttContent: (vtt: string) => string;
     indexJsonContent: (text: string) => string;
     getContent: (resource: ResourceData, startIndex: number, endIndex: number) => string;
     getVttTimestamps: (vttContent: string, startIndex: number, endIndex: number) => {
