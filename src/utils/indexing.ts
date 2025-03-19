@@ -21,20 +21,25 @@ const indexXlsxContent = (text: string): string => {
     .join('\n');
 };
 
-const indexWebVttContent = (text: string): string => {
-  const blocks = splitToBlocks(text);
+const indexWebVttContent = (vtt: string): string => {
+  const blocks = splitToBlocks(vtt);
   const indexed: string[] = [];
-  let currentIndex = 0;
 
   for (const block of blocks) {
     const {text} = cleanVttBlock(block);
     const sentences = getSentences(text);
 
     for (const sentence of sentences) {
-      indexed.push(`${currentIndex++} ${sentence.trim()}`);
+      const last = indexed[indexed.length - 1];
+      let trimmed = sentence.trim();
+
+      if (last && trimmed.startsWith(last)) {
+        trimmed = trimmed.slice(last.length).trim();
+      }
+      if (trimmed) indexed.push(trimmed);
     }
   }
-  return indexed.join('\n');
+  return indexed.map((s, i) => `${i} ${s}`).join('\n');
 };
 
 const indexJsonContent = (text: string): string => {
@@ -64,8 +69,8 @@ const getVttTimestamps = (
   endIndex: number,
 ): {startTime: string; endTime: string} => {
   const blocks = splitToBlocks(vttContent);
+  const indexed: string[] = [];
 
-  let currentIndex = 0;
   let startBlockIndex = 0;
   let endBlockIndex = 0;
 
@@ -73,30 +78,32 @@ const getVttTimestamps = (
     const {text} = cleanVttBlock(blocks[blockIndex]);
     const sentences = getSentences(text);
 
-    if (
-      currentIndex <= startIndex &&
-      currentIndex + sentences.length > startIndex
-    ) {
-      startBlockIndex = blockIndex;
+    for (const sentence of sentences) {
+      const last = indexed[indexed.length - 1];
+      let trimmed = sentence.trim();
+
+      if (last && trimmed.startsWith(last)) {
+        trimmed = trimmed.slice(last.length).trim();
+      }
+      if (trimmed) indexed.push(trimmed);
+
+      const currentIndex = indexed.length - 1;
+
+      if (currentIndex === startIndex) {
+        startBlockIndex = blockIndex;
+      }
+      if (currentIndex === endIndex) {
+        endBlockIndex = blockIndex;
+        break;
+      }
     }
-    if (
-      currentIndex <= endIndex &&
-      currentIndex + sentences.length > endIndex
-    ) {
-      endBlockIndex = blockIndex;
-      break;
-    }
-    currentIndex += sentences.length;
+    if (endBlockIndex > 0) break;
   }
-  console.log(
-    startBlockIndex,
-    endBlockIndex,
-    currentIndex,
-    startIndex,
-    endIndex,
-  );
   const [startTime] = blocks[startBlockIndex].header.split(' --> ');
   const [, endTime] = blocks[endBlockIndex].header.split(' --> ');
+
+  console.log(startBlockIndex, endBlockIndex);
+  console.log(blocks.slice(startBlockIndex, endBlockIndex + 1));
 
   return {startTime: startTime.trim(), endTime: endTime.trim()};
 };

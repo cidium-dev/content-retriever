@@ -30,11 +30,12 @@ fastify.post(
       return reply.code(401).send({error: 'UNAUTHORIZED'});
     }
     const url = req.body.url;
-    const cached = await getCachedContent(url);
+    console.log(url);
+    // const cached = await getCachedContent(url);
 
-    if (cached) {
-      return cached;
-    }
+    // if (cached) {
+    //   return cached;
+    // }
     return await extractAndSaveContent(url);
   },
 );
