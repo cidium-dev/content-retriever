@@ -102,7 +102,7 @@ const extractWebpageContent = async (
   if (!tmp) return undefined;
 
   const contentHtml = tmp.content ? String(tmp.content).trim() : undefined;
-  const contentText = tmp.textContent.trim();
+  const contentText = tmp.textContent?.trim() || '';
   const contentIndexed = indexing.indexContent(contentText);
 
   return {
